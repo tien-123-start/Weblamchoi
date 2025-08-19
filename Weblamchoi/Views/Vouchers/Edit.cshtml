@@ -1,0 +1,56 @@
+﻿@model weblamchoi.Models.Voucher
+@{
+    ViewData["Title"] = "Sửa Voucher";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+
+}
+
+<div class="max-w-xl mx-auto">
+    <h2 class="text-xl font-semibold mb-4">@ViewData["Title"]</h2>
+
+    <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken() <!-- Thêm token chống CSRF -->
+
+        <input type="hidden" asp-for="VoucherID" /> <!-- Giữ ID voucher để gửi về -->
+
+        <div class="mb-3">
+            <label asp-for="Code" class="block font-medium"></label>
+            <input asp-for="Code" class="border p-2 w-full rounded" />
+            <span asp-validation-for="Code" class="text-red-600"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="DiscountAmount" class="block font-medium"></label>
+            <input asp-for="DiscountAmount" type="number" step="0.01" class="border p-2 w-full rounded" />
+            <span asp-validation-for="DiscountAmount" class="text-red-600"></span>
+        </div>
+
+        <div class="mb-3 flex items-center space-x-2">
+            <input asp-for="IsPercentage" type="checkbox" id="IsPercentage" class="form-checkbox" />
+            <label for="IsPercentage" class="font-medium">Giảm theo %?</label>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="StartDate" class="block font-medium"></label>
+            <input asp-for="StartDate" type="date" class="border p-2 w-full rounded" />
+            <span asp-validation-for="StartDate" class="text-red-600"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="EndDate" class="block font-medium"></label>
+            <input asp-for="EndDate" type="date" class="border p-2 w-full rounded" />
+            <span asp-validation-for="EndDate" class="text-red-600"></span>
+        </div>
+
+      
+
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Lưu</button>
+        <a href="/Vouchers" class="ml-4 text-gray-600">Hủy</a>
+    </form>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

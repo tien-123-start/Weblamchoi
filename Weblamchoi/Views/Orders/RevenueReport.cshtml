@@ -1,0 +1,112 @@
+﻿@{
+    var revenueByDay = ViewBag.RevenueByDay as List<weblamchoi.Models.RevenueReport>;
+    var revenueByMonth = ViewBag.RevenueByMonth as List<weblamchoi.Models.RevenueReport>;
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<h1 class="text-center fw-bold">Báo cáo doanh thu</h1>
+<p class="text-center text-muted">Thống kê doanh thu theo ngày và tháng dựa trên dữ liệu thực</p>
+
+<!-- Bảng doanh thu theo ngày -->
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Ngày</th>
+            <th>Doanh thu</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in revenueByDay)
+        {
+            <tr>
+                <td>@item.Date.ToString("dd/MM/yyyy")</td>
+                <td>@item.TotalRevenue.ToString("C")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- Bảng doanh thu theo tháng -->
+<table class="table table-bordered mt-4">
+    <thead>
+        <tr>
+            <th>Tháng</th>
+            <th>Doanh thu</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in revenueByMonth)
+        {
+            <tr>
+                <td>@item.Date.ToString("MM/yyyy")</td>
+                <td>@item.TotalRevenue.ToString("C")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+<a asp-controller="AdminDashboard" asp-action="Index" class="btn btn-secondary mt-3">Quay trở lại Dashboard</a>
+
+<!-- Biểu đồ -->
+<div class="row">
+    <div class="col-md-6">
+        <canvas id="revenueDayChart"></canvas>
+    </div>
+    <div class="col-md-6">
+        <canvas id="revenueMonthChart"></canvas>
+    </div>
+</div>
+
+<script>
+    var revenueByDay = @Html.Raw(Json.Serialize(revenueByDay));
+    var revenueByMonth = @Html.Raw(Json.Serialize(revenueByMonth));
+
+    // Biểu đồ doanh thu theo ngày
+    var dayCtx = document.getElementById('revenueDayChart').getContext('2d');
+    new Chart(dayCtx, {
+        type: 'line',
+        data: {
+            labels: revenueByDay.map(r => r.Date),
+            datasets: [{
+                label: 'Doanh thu theo ngày',
+                data: revenueByDay.map(r => r.TotalRevenue),
+                borderColor: 'blue',
+                borderWidth: 2
+            }]
+        }
+    });
+
+    // Biểu đồ doanh thu theo tháng
+    var monthCtx = document.getElementById('revenueMonthChart').getContext('2d');
+    new Chart(monthCtx, {
+        type: 'bar',
+        data: {
+            labels: revenueByMonth.map(r => r.Date),
+            datasets: [{
+                label: 'Doanh thu theo tháng',
+                data: revenueByMonth.map(r => r.TotalRevenue),
+                backgroundColor: 'green'
+            }]
+        }
+    });
+</script>
+<canvas id="revenueChart"></canvas>
+<script>
+    fetch('/api/orders/revenue')
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(r => r.Date),
+                    datasets: [{
+                        label: 'Doanh thu từ đơn hàng hoàn tất',
+                        data: data.map(r => r.TotalRevenue),
+                        borderColor: 'green',
+                        borderWidth: 2
+                    }]
+                }
+            });
+        });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

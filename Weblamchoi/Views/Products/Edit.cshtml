@@ -1,0 +1,163 @@
+﻿@model weblamchoi.Models.Product
+@using weblamchoi.Models
+
+@{
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<h2>Chỉnh sửa sản phẩm</h2>
+
+<form asp-action="Edit" method="post" enctype="multipart/form-data">
+    <input type="hidden" asp-for="ProductID" />
+    <div class="form-group">
+        <label asp-for="ProductName">Tên sản phẩm</label>
+        <input asp-for="ProductName" class="form-control" />
+        <span asp-validation-for="ProductName" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="CategoryID">Danh mục</label>
+        <select asp-for="CategoryID" asp-items="@(ViewData["CategoryID"] as IEnumerable<SelectListItem>)" class="form-control">
+            <option value="">Chọn danh mục</option>
+        </select>
+        <span asp-validation-for="CategoryID" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="ManufacturerID">Nhà sản xuất</label>
+        <select asp-for="ManufacturerID" asp-items="@(ViewData["ManufacturerID"] as IEnumerable<SelectListItem>)" class="form-control">
+            <option value="">Chọn nhà sản xuất</option>
+        </select>
+        <span asp-validation-for="ManufacturerID" class="text-danger"></span>
+    </div>
+    <h4>Thông tin quà tặng khuyến mãi</h4>
+
+    <div class="form-group">
+        <label for="SelectedBonusProductID">Chọn sản phẩm làm quà tặng</label>
+        <select name="SelectedBonusProductID" class="form-control">
+            <option value="">-- Chọn sản phẩm quà tặng --</option>
+            @foreach (var item in ViewBag.BonusProducts as List<Product>)
+            {
+                <option value="@item.ProductID" selected="@(item.ProductID == Model.BonusProductID ? "selected" : null)">
+                    @item.ProductName - @string.Format("{0:N0}₫", item.Price)
+                </option>
+            }
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="StartDate">Bắt đầu khuyến mãi</label>
+        <input type="datetime-local" id="StartDate" name="StartDate" class="form-control"
+               value="@(Model.StartDate?.ToString("yyyy-MM-ddTHH:mm") ?? "")" />
+    </div>
+
+    <div class="form-group">
+        <label for="EndDate">Kết thúc khuyến mãi</label>
+        <input type="datetime-local" id="EndDate" name="EndDate" class="form-control"
+               value="@(Model.EndDate?.ToString("yyyy-MM-ddTHH:mm") ?? "")" />
+    </div>
+
+    <div class="form-group">
+        <label asp-for="Price">Giá</label>
+        <input asp-for="Price" class="form-control" />
+        <span asp-validation-for="Price" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Quantity">Số lượng</label>
+        <input asp-for="Quantity" class="form-control" />
+        <span asp-validation-for="Quantity" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Description">Mô tả</label>
+        <textarea asp-for="Description" class="form-control"></textarea>
+        <span asp-validation-for="Description" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label>Ảnh đại diện hiện tại:</label><br />
+        @if (!string.IsNullOrEmpty(Model.ImageURL))
+        {
+            string imagePath = Model.ImageURL.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+            ? Model.ImageURL
+            : Url.Content("~/" + Model.ImageURL.TrimStart('/'));
+
+            <img src="@imagePath" alt="@Model.ProductName" width="100" class="img-thumbnail" />
+        }
+        else
+        {
+            <span>Chưa có ảnh</span>
+        }
+    </div>
+
+    <div class="form-group mt-2">
+        <label>Chọn ảnh đại diện mới (nếu muốn thay):</label>
+        <input type="file" name="ImageFile" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label>Ảnh Thumbnail hiện tại:</label>
+        @if (Model.Thumbnails?.Any() == true)
+        {
+            <div class="d-flex flex-wrap">
+                @foreach (var thumb in Model.Thumbnails)
+                {
+                    var thumbPath = thumb.ThumbnailURL.StartsWith("/")
+                    ? Url.Content(thumb.ThumbnailURL)
+                    : Url.Content("/" + thumb.ThumbnailURL);
+
+                    <img src="@thumbPath" alt="Thumb" width="50" class="m-1 border rounded" />
+                }
+            </div>
+        }
+        else
+        {
+            <p class="text-muted">Không có</p>
+        }
+    </div>
+    <div class="form-group">
+        <label>Thêm ảnh thumbnails mới (nếu muốn thay toàn bộ):</label>
+        <input type="file" name="ThumbnailFiles" class="form-control" multiple />
+    </div>
+
+    <div class="form-group">
+        <label asp-for="IsAvailable">Trạng thái</label>
+        <input asp-for="IsAvailable" type="checkbox" />
+    </div>
+
+    @if (ViewBag.BonusProductPreview != null)
+    {
+        <div class="alert alert-info mt-3">
+            <strong>Quà khuyến mãi hiện tại:</strong> @ViewBag.BonusProductPreview.BonusProductName (@ViewBag.BonusProductPreview.BonusProductPrice)
+            <br />
+            <small>Từ: @(ViewBag.BonusProductPreview.StartDate?.ToString("dd/MM/yyyy") ?? "Không xác định")</small>
+            <br />
+            <small>Đến: @(ViewBag.BonusProductPreview.EndDate?.ToString("dd/MM/yyyy") ?? "Không xác định")</small>
+        </div>
+    }
+
+    <button type="submit" class="btn btn-primary">Cập nhật</button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        const startDateInput = document.getElementById("StartDate");
+        const endDateInput = document.getElementById("EndDate");
+
+        function updateMinEndDate() {
+            if (startDateInput.value) {
+                endDateInput.min = startDateInput.value;
+
+                // Nếu EndDate hiện tại nhỏ hơn StartDate → reset
+                if (endDateInput.value && endDateInput.value < startDateInput.value) {
+                    endDateInput.value = "";
+                }
+            } else {
+                endDateInput.min = "";
+            }
+        }
+
+        startDateInput.addEventListener("change", updateMinEndDate);
+
+        // Chạy khi load trang để thiết lập ban đầu
+        updateMinEndDate();
+    </script>
+}

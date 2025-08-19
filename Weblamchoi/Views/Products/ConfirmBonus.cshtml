@@ -1,0 +1,36 @@
+﻿@model weblamchoi.Models.Product
+@using weblamchoi.Models
+@{
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<h2>Xác nhận quà khuyến mãi</h2>
+
+<div>
+    <h4>Sản phẩm: @(Model.ProductName ?? "Không có tên")</h4>
+    <p>Quà khuyến mãi: @(ViewBag.BonusProductPreview != null ? $"{ViewBag.BonusProductPreview.BonusProductName} ({ViewBag.BonusProductPreview.BonusProductPrice})" : "Không có")</p>
+    @if (ViewBag.BonusProductPreview?.BonusProductImageURL != null)
+    {
+        <p><img src="@ViewBag.BonusProductPreview.BonusProductImageURL" alt="Bonus Product" width="100" class="img-thumbnail" /></p>
+    }
+    <p>Thời gian bắt đầu: @(ViewBag.BonusProductPreview?.StartDate?.ToString("dd/MM/yyyy HH:mm") ?? "Không xác định")</p>
+    <p>Thời gian kết thúc: @(ViewBag.BonusProductPreview?.EndDate?.ToString("dd/MM/yyyy HH:mm") ?? "Không xác định")</p>
+    @if (ViewBag.BonusProductPreview != null)
+    {
+        <form asp-action="ConfirmBonusProduct" method="post">
+            <input type="hidden" name="productId" value="@Model.ProductID" />
+            <input type="hidden" name="bonusProductName" value="@ViewBag.BonusProductPreview.BonusProductName" />
+            <input type="hidden" name="bonusProductImageUrl" value="@ViewBag.BonusProductPreview.BonusProductImageURL" />
+            <input type="hidden" name="bonusProductPrice" value="@(decimal.Parse(ViewBag.BonusProductPreview.BonusProductPrice.Replace("đ", "").Replace(",", "").Trim()))" />
+            <input type="hidden" name="startDate" value="@ViewBag.BonusProductPreview.StartDate" />
+            <input type="hidden" name="endDate" value="@ViewBag.BonusProductPreview.EndDate" />
+            <button type="submit" class="btn btn-success">Xác nhận lưu quà khuyến mãi</button>
+            <a asp-action="Index" class="btn btn-secondary">Hủy</a>
+        </form>
+    }
+    else
+    {
+        <p class="text-danger">Không có quà khuyến mãi để xác nhận.</p>
+        <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
+    }
+</div>

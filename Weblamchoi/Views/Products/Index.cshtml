@@ -1,0 +1,129 @@
+﻿@model IEnumerable<weblamchoi.Models.Product>
+@using weblamchoi.Models
+@{
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<h2>Danh sách sản phẩm</h2>
+<a asp-action="Create" class="btn btn-success">Thêm mới</a>
+
+<table class="table table-bordered mt-3">
+    <thead>
+        <tr>
+            <th>Tên SP</th>
+            <th>Danh mục</th>
+            <th>Hãng SX</th>
+            <th>Giá</th>
+            <th>Số lượng</th>
+            <th>Ảnh chính</th>
+            <th>Ảnh nhỏ</th>
+            <th>Sản Phẩm Khuyến Mãi</th>
+            <th>Thao tác</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@(item.ProductName ?? "Không có tên")</td>
+                <td>@(item.Category?.CategoryName ?? "Không có")</td>
+                <td>@(item.Manufacturer?.ManufacturerName ?? "Không có")</td>
+                <td>
+                    @if (item.OriginalPrice != null && item.OriginalPrice > item.Price)
+                    {
+                        <span class="text-danger fw-bold">@item.Price.ToString("N0") ₫</span>
+                        <br />
+                        <span class="text-muted text-decoration-line-through small">
+                            @item.OriginalPrice.Value.ToString("N0") ₫
+                        </span>
+                        <br />
+                        <span class="badge bg-danger">
+                            -@((100 - (item.Price / item.OriginalPrice.Value * 100)).ToString("N0"))%
+                        </span>
+                    }
+                    else
+                    {
+                        <span>@item.Price.ToString("N0") ₫</span>
+                    }
+                </td>
+                <td>@item.Quantity</td>
+                <td>
+                    @if (!string.IsNullOrEmpty(item.ImageURL))
+                    {
+                        string imagePath = item.ImageURL.StartsWith("http")
+                        ? item.ImageURL
+                        : Url.Content(item.ImageURL);
+                        <img src="@imagePath" alt="@item.ProductName" width="100" class="img-thumbnail" />
+                    }
+                    else
+                    {
+                        <span>Chưa có ảnh</span>
+                    }
+                </td>
+                <td>
+                    @if (item.Thumbnails?.Any() == true)
+                    {
+                        <div class="d-flex flex-wrap">
+                            @foreach (var thumb in item.Thumbnails)
+                            {
+                                <img src="@thumb.ThumbnailURL" alt="Thumb" width="50" class="m-1 border rounded" />
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <span>Không có</span>
+                    }
+                </td>
+                <td>
+                    @if (item.BonusProduct != null)
+                    {
+                        <span>@item.BonusProduct.ProductName (@item.BonusProduct.Price.ToString("N0")đ)</span>
+                        <br />
+                        @if (!string.IsNullOrEmpty(item.BonusProduct.ImageURL))
+                        {
+                            string bonusImagePath = item.BonusProduct.ImageURL.StartsWith("http")
+                            ? item.BonusProduct.ImageURL
+                            : Url.Content(item.BonusProduct.ImageURL);
+                            <img src="@bonusImagePath" alt="@item.BonusProduct.ProductName" width="50" class="img-thumbnail m-1" />
+                        }
+                        else
+                        {
+                            <span class="text-muted small">Chưa có ảnh</span>
+                        }
+                        <br />
+                        <small>Từ: @(item.StartDate?.ToString("dd/MM/yyyy") ?? "Không xác định")</small>
+                        <br />
+                        <small>Đến: @(item.EndDate?.ToString("dd/MM/yyyy") ?? "Không xác định")</small>
+
+                        @* ✅ Thêm cảnh báo hết hạn *@
+                        @if (item.EndDate.HasValue && item.EndDate.Value < DateTime.Now)
+                        {
+                            <br />
+                            <span class="badge bg-secondary">Hết hạn khuyến mãi</span>
+                        }
+                    }
+                    else
+                    {
+                        <span>Không có</span>
+                    }
+                </td>
+
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.ProductID" class="btn btn-warning btn-sm">Sửa</a>
+                    <a asp-action="Discount" asp-route-id="@item.ProductID" class="btn btn-info btn-sm ms-1">Giảm giá</a>
+                    <form asp-action="Delete" asp-route-id="@item.ProductID" method="post" onsubmit="return confirm('Bạn có chắc chắn xoá?');" style="display:inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-danger btn-sm ms-1">Xoá</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a asp-controller="AdminDashboard" asp-action="Index" class="btn btn-secondary mt-3">Quay trở lại Dashboard</a>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

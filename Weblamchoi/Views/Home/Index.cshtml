@@ -1,0 +1,197 @@
+﻿@model IEnumerable<weblamchoi.Models.Product>
+@{
+    ViewData["Title"] = "Trang chủ";
+    var manufacturers = ViewBag.Manufacturers as List<weblamchoi.Models.Manufacturer>;
+    var categories = ViewBag.Categories as List<weblamchoi.Models.Category>;
+    var currentManufacturerId = ViewBag.SelectedManufacturerId as int?;
+    var currentCategoryId = ViewBag.SelectedCategoryId as int?;
+    var keyword = ViewBag.Keyword as string;
+    var cartCount = ViewBag.CartCount as int? ?? 0;
+}
+
+@section Styles {
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/home.css"/>
+}
+
+<div class="main-banner container">
+    <div class="banner-wrapper">
+        <img src="https://cdn.tgdd.vn/News/Thumb/1522120/ca%CC%81-tha%CC%81ng-4-1200x628.jpg"
+             alt="Banner Cá Tháng 4 – Săn Deal Bự" style="width:100%; height:auto;" />
+    </div>
+</div>
+
+
+<div class="container sub-banner-carousel">
+    <div id="subBannerCarousel" class="carousel slide" data-bs-ride="carousel">
+        <div class="carousel-inner">
+            <div class="carousel-item active">
+                <img src="/Uploads/banner1.jpg" class="d-block w-100" alt="Banner 1">
+            </div>
+            <div class="carousel-item">
+                <img src="/Uploads/banner2.jpg" class="d-block w-100" alt="Banner 2">
+            </div>
+            <div class="carousel-item">
+                <img src="/Uploads/banner3.jpg" class="d-block w-100" alt="Banner 3">
+            </div>
+        </div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#subBannerCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Previous</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#subBannerCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Next</span>
+        </button>
+    </div>
+</div>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="sidebar-section">
+                <h5 class="sidebar-title">Hãng sản xuất</h5>
+                <ul class="list-group mb-4">
+                    <li class="list-group-item @(currentManufacturerId == null ? "active" : "")">
+                        <a asp-action="Index"
+                           asp-route-categoryId="@currentCategoryId"
+                           asp-route-keyword="@keyword"
+                           class="list-group-link">Tất cả</a>
+                    </li>
+                    @foreach (var m in manufacturers)
+                    {
+                        <li class="list-group-item @(m.ManufacturerID == currentManufacturerId ? "active" : "")">
+                            <a asp-action="Index"
+                               asp-route-manufacturerId="@m.ManufacturerID"
+                               asp-route-categoryId="@currentCategoryId"
+                               asp-route-keyword="@keyword"
+                               class="list-group-link">@m.ManufacturerName</a>
+                        </li>
+                    }
+                </ul>
+
+                <h5 class="sidebar-title">Danh mục</h5>
+                <ul class="list-group">
+                    <li class="list-group-item @(currentCategoryId == null ? "active" : "")">
+                        <a asp-action="Index"
+                           asp-route-manufacturerId="@currentManufacturerId"
+                           asp-route-keyword="@keyword"
+                           class="list-group-link">Tất cả</a>
+                    </li>
+                    @foreach (var c in categories)
+                    {
+                        <li class="list-group-item @(c.CategoryID == currentCategoryId ? "active" : "")">
+                            <a asp-action="Index"
+                               asp-route-categoryId="@c.CategoryID"
+                               asp-route-manufacturerId="@currentManufacturerId"
+                               asp-route-keyword="@keyword"
+                               class="list-group-link">@c.CategoryName</a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            @if (!Model.Any())
+            {
+                <div class="alert alert-info text-center" role="alert">
+                    Không tìm thấy sản phẩm nào phù hợp với tiêu chí.
+                </div>
+            }
+            else
+            {
+                <div class="row" id="product-container">
+                    @{
+                        int index = 0;
+                        foreach (var p in Model)
+                        {
+                            var isHidden = index >= 9 ? "d-none" : "";
+                            <div class="col-md-4 col-sm-6 mb-4 product-item @isHidden">
+                                <div class="card product-card h-100">
+                                    <img src="@p.ImageURL" class="card-img-top" alt="@p.ProductName">
+                                    <div class="card-body text-center">
+                                        <h6 class="card-title" title="@p.ProductName">@p.ProductName</h6>
+                                        @if (p.OriginalPrice != null && p.OriginalPrice > p.Price)
+                                        {
+                                            <div class="price-container">
+                                                <span class="price-current">@p.Price.ToString("N0") ₫</span>
+                                                <span class="price-original">@p.OriginalPrice.Value.ToString("N0") ₫</span>
+                                                <span class="discount-badge">
+                                                    -@((100 - (p.Price / p.OriginalPrice.Value * 100)).ToString("N0"))%
+                                                </span>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="price-container">
+                                                <span class="price-current">@p.Price.ToString("N0") ₫</span>
+                                            </div>
+                                        }
+<p class="stock-info">
+    @if (p.Quantity <= 0)
+    {
+        <span class="text-danger fw-bold">Hết hàng</span>
+    }
+    else
+    {
+        <span>🔥 Còn lại: @p.Quantity sản phẩm</span>
+    }
+</p>
+                                        <p class="text-muted small">@(p.Manufacturer?.ManufacturerName ?? "N/A") - @(p.Category?.CategoryName ?? "N/A")</p>
+                                    </div>
+                                    <div class="card-footer text-center">
+                                        <a asp-controller="Products" asp-action="Details" asp-route-id="@p.ProductID"
+                                           class="btn btn-primary">Xem chi tiết</a>
+                                        @if (User.Identity != null && User.Identity.IsAuthenticated)
+                                        {
+                                            <form asp-controller="Cart" asp-action="Add" method="post" class="d-inline">
+                                                <input type="hidden" name="productId" value="@p.ProductID" />
+                                                <input type="hidden" name="quantity" value="1" />
+                                                <button type="submit" class="btn btn-outline-primary btn-sm ms-2">
+                                                    <i class="bi bi-cart-plus"></i> Thêm vào giỏ
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                            index++;
+                        }
+                    }
+                </div>
+
+                @if (Model.Count() > 9)
+                {
+                    <div class="text-center mt-4">
+                        <button id="btn-show-more" class="btn-show-more">
+                            Xem thêm sản phẩm <i class="bi bi-chevron-down"></i>
+                        </button>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('btn-show-more')?.addEventListener('click', function () {
+            const hiddenItems = document.querySelectorAll('.product-item.d-none');
+            const countToShow = 9;
+
+            let shown = 0;
+            for (let item of hiddenItems) {
+                if (shown >= countToShow) break;
+                item.classList.remove('d-none');
+                shown++;
+            }
+
+            if (document.querySelectorAll('.product-item.d-none').length === 0) {
+                this.style.display = 'none';
+            }
+        });
+    </script>
+}

@@ -1,0 +1,286 @@
+﻿:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --secondary-color: #10b981;
+    --accent-color: #f59e0b;
+    --text-dark: #1f2937;
+    --text-light: #6b7280;
+    --bg-light: #f8fafc;
+    --border-color: #e5e7eb;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: var(--text-dark);
+    background-color: var(--bg-light);
+}
+.banner-wrapper {
+    width: 100%;
+    height: 400px; /* chỉnh chiều cao mong muốn */
+    overflow: hidden;
+}
+
+    .banner-wrapper img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover; /* hoặc cover */
+    }
+
+        .main-banner img:hover {
+            transform: scale(1.02);
+            opacity: 0.95;
+        }
+
+.sub-banner-carousel {
+    margin-bottom: 2rem;
+}
+
+    .sub-banner-carousel .carousel-item img {
+        height: 300px;
+        object-fit: cover;
+        border-radius: 15px;
+        background: white;
+        padding: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        transition: transform 0.3s ease;
+    }
+
+        .sub-banner-carousel .carousel-item img:hover {
+            transform: scale(1.03);
+        }
+
+    .sub-banner-carousel .carousel-control-prev,
+    .sub-banner-carousel .carousel-control-next {
+        width: 5%;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 15px;
+        transition: background 0.3s ease;
+    }
+
+        .sub-banner-carousel .carousel-control-prev:hover,
+        .sub-banner-carousel .carousel-control-next:hover {
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+    .sub-banner-carousel .carousel-control-prev-icon,
+    .sub-banner-carousel .carousel-control-next-icon {
+        background-size: 50%;
+    }
+
+/* Sidebar Styles */
+.sidebar-section {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--border-color);
+}
+
+.sidebar-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+    .sidebar-title::after {
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        left: 0;
+        width: 50px;
+        height: 3px;
+        background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    }
+
+.list-group-item {
+    border: none;
+    padding: 10px 15px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    transition: all 0.3s ease;
+}
+
+    .list-group-item:hover {
+        background: var(--bg-light);
+        transform: translateX(5px);
+    }
+
+    .list-group-item.active {
+        background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+        color: white;
+    }
+
+        .list-group-item.active .list-group-link {
+            color: white;
+        }
+
+.list-group-link {
+    text-decoration: none;
+    color: var(--text-dark);
+    font-weight: 500;
+    display: block;
+    transition: color 0.3s ease;
+}
+
+    .list-group-link:hover {
+        color: var(--primary-color);
+    }
+
+/* Product Card Styles */
+.product-card {
+    border: none;
+    border-radius: 15px;
+    overflow: hidden;
+    background: white;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+    }
+
+    .product-card .card-img-top {
+        height: 220px;
+        object-fit: contain;
+        padding: 20px;
+        background: white;
+        transition: transform 0.3s ease;
+    }
+
+    .product-card:hover .card-img-top {
+        transform: scale(1.05);
+    }
+
+    .product-card .card-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-dark);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 0.75rem;
+    }
+
+.price-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 0.75rem;
+}
+
+.price-current {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+.price-original {
+    font-size: 0.9rem;
+    color: var(--text-light);
+    text-decoration: line-through;
+}
+
+.discount-badge {
+    font-size: 0.8rem;
+    background: var(--accent-color);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+.stock-info {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: white;
+    background: var(--text-dark);
+    padding: 6px 12px;
+    border-radius: 8px;
+    display: inline-block;
+    margin-bottom: 0.5rem;
+}
+
+.product-card .card-footer {
+    border-top: none;
+    background: white;
+    padding: 10px;
+}
+
+.product-card .btn {
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 8px 20px;
+    border-radius: 10px;
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    transition: all 0.3s ease;
+}
+
+    .product-card .btn:hover {
+        background: var(--primary-dark);
+        border-color: var(--primary-dark);
+        transform: translateY(-2px);
+    }
+
+/* Show More Button */
+.btn-show-more {
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 12px 30px;
+    border-radius: 10px;
+    border: 2px solid var(--primary-color);
+    color: var(--primary-color);
+    background: transparent;
+    transition: all 0.3s ease;
+}
+
+    .btn-show-more:hover {
+        background: var(--primary-color);
+        color: white;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        transform: translateY(-2px);
+    }
+
+    .btn-show-more i {
+        margin-left: 8px;
+    }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .main-banner img {
+        max-height: 300px;
+        height: auto;
+    }
+
+    .sub-banner-carousel .carousel-item img {
+        height: 200px;
+    }
+
+    .sidebar-section {
+        margin-bottom: 2rem;
+    }
+
+    .product-card .card-img-top {
+        height: 180px;
+    }
+
+    .product-card .card-title {
+        font-size: 0.9rem;
+    }
+
+    .price-current {
+        font-size: 1rem;
+    }
+
+    .btn-show-more {
+        font-size: 0.9rem;
+        padding: 10px 20px;
+    }
+}

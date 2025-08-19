@@ -1,0 +1,23 @@
+﻿@model Admin
+<h2>Sửa Admin</h2>
+
+<form asp-action="Edit">
+    <input type="hidden" asp-for="AdminID" />
+    <div class="form-group">
+        <label asp-for="Username"></label>
+        <input asp-for="Username" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label asp-for="PasswordHash">Mật khẩu (nếu đổi)</label>
+        <input asp-for="PasswordHash" type="password" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label asp-for="FullName"></label>
+        <input asp-for="FullName" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label asp-for="Email"></label>
+        <input asp-for="Email" class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-primary mt-2">Lưu thay đổi</button>
+</form>

@@ -1,0 +1,361 @@
+﻿@{
+    ViewData["Title"] = "Trang chủ";
+}
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"] - Điện Máy Xanh</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/layouthome.css">
+    @RenderSection("Styles", required: false)
+
+</head>
+<body>
+    <div class="top-bar">
+        <div class="container">
+            <div class="hotline-info">
+                <div class="hotline-item">
+                    <i class="bi bi-telephone-fill"></i>
+                    <span>Gọi mua: <a href="tel:1900232461" class="hotline-link">1900 232 461 </a></span>
+                </div>
+                <div class="hotline-item">
+                    <i class="bi bi-headset"></i>
+                    <span>Khiếu nại: <a href="tel:18001063" class="hotline-link">1800 1063</a></span>
+                </div>
+                <div class="hotline-item">
+                    <i class="bi bi-tools"></i>
+                    <span>Bảo hành: <a href="tel:1900232465" class="hotline-link">1900 232 465</a></span>
+                </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <header class="main-header">
+        <div class="container">
+            <div class="header-content">
+                <a href="/Home/Index" class="logo">
+                    <i class="bi bi-lightning-charge-fill"></i>
+                    Điện Máy Xanh
+                </a>
+
+                <div class="search-container" style="position: relative;">
+                    <form class="search-form" asp-controller="Home" asp-action="Index" method="get">
+                        <input type="text" id="searchInput" class="search-input" name="keyword"
+                               placeholder="Tìm kiếm sản phẩm..." value="@ViewBag.Keyword" autocomplete="off">
+                        <button type="submit" class="search-btn">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </form>
+                    <ul id="suggestions" class="list-group position-absolute w-100"></ul>
+                </div>
+
+                <div class="location-selector">
+                    <i class="bi bi-geo-alt-fill"></i>
+                    <select class="location-select" onchange="onProvinceChange(this)">
+                        <option selected disabled>Chọn khu vực</option>
+                        @if (ViewBag.Provinces != null)
+                        {
+                            foreach (var p in ViewBag.Provinces as List<string>)
+                            {
+                                <option value="@p">@p</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <div class="user-actions">
+                    @if (User.Identity != null && User.Identity.IsAuthenticated)
+                    {
+                        <div class="user-dropdown">
+                            <div class="user-info">
+                                <div class="user-avatar">@User.Identity.Name.First().ToString().ToUpper()</div>
+                                <span class="user-name">@User.Identity.Name</span>
+                            </div>
+                            <div class="user-dropdown-menu">
+                                <a class="user-dropdown-item" asp-controller="Users" asp-action="Profile">Hồ sơ</a>
+                                <form asp-controller="Login" asp-action="Logout" method="post">
+                                    <button type="submit" class="logout-btn">Đăng xuất</button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <a asp-controller="Login" asp-action="Index" class="btn-primary-custom">Đăng nhập</a>
+                    }
+                    <a asp-controller="Cart" asp-action="Index" class="cart-icon" title="Giỏ hàng">
+                        <i class="bi bi-cart3"></i>
+                        @if (ViewBag.CartCount > 0)
+                        {
+                            <span class="cart-badge">@ViewBag.CartCount</span>
+                        }
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <nav class="main-nav">
+        <div class="container">
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="/Home/Index">Trang chủ</a>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false">
+                        Danh mục
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        @if (ViewBag.Categories != null)
+                        {
+                            foreach (var c in ViewBag.Categories as List<weblamchoi.Models.Category>)
+                            {
+                                <li>
+                                    <a class="dropdown-item" asp-action="Index" asp-route-categoryId="@c.CategoryID">
+                                        @c.CategoryName
+                                    </a>
+                                </li>
+                            }
+                        }
+                    </ul>
+                </li>
+
+                <li class="nav-item">
+                    <a href="/Home/About">Giới thiệu</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/Contact/Index">Liên hệ</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#">Khuyến mãi</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#">Tin tức</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="hero-section">
+        <div class="container">
+            <div class="hero-content">
+                <h1 class="hero-title">Chào mừng đến với Điện Máy Xanh</h1>
+                <p class="hero-subtitle">Nơi mua sắm điện máy, điện tử uy tín hàng đầu Việt Nam</p>
+                <div style="margin-top: 30px;">
+                    <a href="#" class="btn-primary-custom me-3">Khám phá ngay</a>
+                    <a href="#" class="btn-outline-custom">Xem khuyến mãi</a>
+                </div>
+            </div>
+        </div>
+    </section>
+    <main role="main" class="container">
+        @RenderBody()
+    </main>
+    <section class="categories-section">
+        <div class="container">
+            <h2 class="section-title">Danh mục sản phẩm</h2>
+            <div class="categories-grid">
+                @if (ViewBag.Categories != null)
+                {
+                    foreach (var c in ViewBag.Categories as List<weblamchoi.Models.Category>)
+                    {
+                        <a href="@Url.Action("Index", "Home", new { categoryId = c.CategoryID })"
+                           class="category-card">
+                            <div class="category-icon">
+                                <i class="bi bi-box"></i>
+                            </div>
+                            <h3 class="category-name">@c.CategoryName</h3>
+                            <p class="category-desc">
+                                @(c.Description ?? "Khám phá các sản phẩm " + c.CategoryName.ToLower())
+                            </p>
+                        </a>
+                    }
+                }
+            </div>
+        </div>
+    </section>
+
+
+
+    <section class="features-section">
+        <div class="container">
+            <h2 class="section-title">Vì sao chọn Điện Máy Xanh?</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <h4>Bảo hành chính hãng</h4>
+                    <p>Cam kết 100% sản phẩm chính hãng với bảo hành toàn quốc</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-truck"></i>
+                    </div>
+                    <h4>Giao hàng nhanh</h4>
+                    <p>Giao hàng trong 2h tại TP.HCM và Hà Nội, 24h toàn quốc</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </div>
+                    <h4>Đổi trả dễ dàng</h4>
+                    <p>Đổi trả trong 30 ngày nếu sản phẩm có lỗi từ nhà sản xuất</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-credit-card"></i>
+                    </div>
+                    <h4>Trả góp 0%</h4>
+                    <p>Hỗ trợ trả góp 0% lãi suất cho nhiều sản phẩm</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-3 mb-4">
+                        <h5>Tổng đài hỗ trợ</h5>
+                        <p class="mb-1">Gọi mua: <a href="tel:1900232461">1900 232 461</a> (8:00 - 21:30)</p>
+                        <p class="mb-1">Khiếu nại: <a href="tel:18001063">1800 1063</a> (8:00 - 21:30)</p>
+                        <p class="mb-0">Bảo hành: <a href="tel:1900232465">1900 232 465</a> (8:00 - 21:00)</p>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <h5>Về công ty</h5>
+                        <ul class="list-unstyled">
+                            <li><a href="#">Giới thiệu công ty (MWG.vn)</a></li>
+                            <li><a href="#">Tuyển dụng</a></li>
+                            <li><a href="#">Gửi góp ý, khiếu nại</a></li>
+                            <li><a href="#">Tìm siêu thị (2957 shop)</a></li>
+                        </ul>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <h5>Thông tin khác</h5>
+                        <ul class="list-unstyled">
+                            <li><a href="#">Tích điểm Quà tặng VIP</a></li>
+                            <li><a href="#">Lịch sử mua hàng</a></li>
+                            <li><a href="#">Đăng ký bán hàng CTV</a></li>
+                            <li><a href="#">Tìm hiểu về mua trả chậm</a></li>
+                        </ul>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <h5>Kết nối & Ứng dụng</h5>
+                        <div class="mb-2">
+                            <span class="social-icon"><i class="bi bi-facebook"></i></span>
+                            <span>3868.8k Fan</span>
+                        </div>
+                        <div class="mb-2">
+                            <span class="social-icon"><i class="bi bi-youtube"></i></span>
+                            <span>682k Đăng ký</span>
+                        </div>
+                        <div class="mb-2">
+                            <span class="social-icon"><i class="bi bi-chat-dots"></i></span>
+                            <span>Zalo DMX</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="footer-bottom">
+                    &copy; 2025 Công ty cổ phần Điện Máy Xanh. Giấy phép ĐKKD số 0303217354 do Sở KH & ĐT TP.HCM cấp ngày 02/01/2007.<br>
+                    Địa chỉ: 128 Trần Quang Khải, P.Tân Định, Q.1, TP.HCM. Email: <a href="mailto:hotro@dienmayxanh.com">hotro@dienmayxanh.com</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // ========== Gợi ý tìm kiếm ==========
+            const searchInput = document.getElementById("searchInput");
+            const suggestions = document.getElementById("suggestions");
+
+            if (searchInput) {
+                searchInput.addEventListener("keyup", function () {
+                    let keyword = searchInput.value;
+                    if (keyword.length < 2) {
+                        suggestions.innerHTML = "";
+                        return;
+                    }
+
+                    fetch(`/Home/SearchSuggest?keyword=${encodeURIComponent(keyword)}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            suggestions.innerHTML = "";
+                            data.forEach(item => {
+                                let li = document.createElement("li");
+                                li.className = "list-group-item list-group-item-action";
+                                li.textContent = item;
+                                li.onclick = function () {
+                                    searchInput.value = item;
+                                    suggestions.innerHTML = "";
+                                };
+                                suggestions.appendChild(li);
+                            });
+                        });
+                });
+            }
+
+            // ========== User Actions ==========
+            const userActions = document.getElementById('userActions');
+            const authButtons = document.getElementById('authButtons');
+
+            @if (User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                    <text>
+                        if (userActions) {
+                            userActions.innerHTML = `
+                                <div class="user-dropdown">
+                                    <div class="user-info">
+                                        <div class="user-avatar">@User.Identity.Name.Substring(0, 1).ToUpper()</div>
+                                        <span class="user-name">@User.Identity.Name</span>
+                                    </div>
+                                    <div class="user-dropdown-menu">
+                                        <a class="user-dropdown-item" href="/Users/Profile">Hồ sơ</a>
+                                        <form asp-controller="Login" asp-action="Logout" method="post">
+                                            <button type="submit" class="logout-btn">Đăng xuất</button>
+                                        </form>
+                                    </div>
+                                </div>
+                                <a href="/Cart/Index" class="cart-icon" title="Giỏ hàng">
+                                    <i class="bi bi-cart3"></i>
+                                    @(ViewBag.CartCount > 0 ? $"<span class='cart-badge'>{ViewBag.CartCount}</span>" : "")
+                                `;
+                        }
+                    </text>
+            }
+            else
+            {
+                    <text>
+                        if (userActions) {
+                            userActions.innerHTML = `
+                                <a href="/Login/Index" class="btn-primary-custom">Đăng nhập</a>
+                                <a href="/Cart/Index" class="cart-icon" title="Giỏ hàng">
+                                    <i class="bi bi-cart3"></i>
+                                </a>
+                            `;
+                        }
+                        if (authButtons) {
+                            authButtons.innerHTML = `
+                                <a href="/Login/Index" class="login-btn">Đăng nhập</a>
+                            `;
+                        }
+                    </text>
+            }
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    @RenderSection("Scripts", required: false)
+
+</body>
+</html>

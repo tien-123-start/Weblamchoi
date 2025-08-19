@@ -1,0 +1,56 @@
+﻿@model weblamchoi.Models.RegisterViewModel
+
+@{
+    ViewData["Title"] = "Đăng ký";
+}
+<link rel="stylesheet" href="/css/đk.css"/>
+<!-- Giao diện -->
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 100vh;">
+    <div class="card shadow-lg p-4 rounded fade-in" style="width: 100%; max-width: 500px;">
+        <h3 class="text-center mb-4 text-primary">Đăng ký tài khoản</h3>
+
+        <form asp-action="Register" method="post" autocomplete="off">
+            <div class="form-floating mb-3">
+                <input asp-for="FullName" class="form-control" placeholder="Họ tên" />
+                <label asp-for="FullName">Họ tên</label>
+                <span asp-validation-for="FullName" class="text-danger"></span>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Email" class="form-control" placeholder="Email" />
+                <label asp-for="Email">Email</label>
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Password" class="form-control" type="password" placeholder="Mật khẩu" />
+                <label asp-for="Password">Mật khẩu</label>
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Phone" class="form-control" placeholder="Số điện thoại" />
+                <label asp-for="Phone">Số điện thoại</label>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Address" class="form-control" placeholder="Địa chỉ" />
+                <label asp-for="Address">Địa chỉ</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2">Tạo tài khoản</button>
+
+            <div class="text-center mt-3">
+                <small>
+                    Đã có tài khoản?
+                    <a asp-action="Index" asp-controller="Login" class="text-decoration-underline text-primary">Đăng nhập</a>
+                </small>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

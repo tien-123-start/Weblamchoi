@@ -1,0 +1,137 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+:root {
+    --primary-color: #00a650;
+    --secondary-color: #f8f9fa;
+    --text-color: #333;
+    --border-color: #e0e0e0;
+    --accent-color: #ff6200;
+    --gradient-start: #00a650;
+    --gradient-end: #008c3f;
+    --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --border-radius: 12px;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: #ffffff; /* màu trắng */
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #3467e1;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+    .header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+
+    .header p {
+        font-size: 1.1rem;
+        font-weight: 500;
+        opacity: 0.9;
+    }
+
+.logout-btn {
+    display: block;
+    margin-left: auto;
+    margin-bottom: 20px;
+    padding: 10px 20px;
+    font-weight: 600;
+    border: 2px solid #dc3545;
+    background: transparent;
+    color: #dc3545;
+    border-radius: var(--border-radius);
+    transition: all 0.3s ease;
+}
+
+    .logout-btn:hover {
+        background: #dc3545;
+        color: #fff;
+        text-decoration: none;
+    }
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.card {
+    background: #fff;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+    overflow: hidden;
+}
+
+    .card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+    }
+
+.card-body {
+    padding: 20px;
+    text-align: center;
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card a {
+    text-decoration: none;
+    width: 100%;
+    padding: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: var(--border-radius);
+    transition: all 0.3s ease;
+    display: block;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: #fff;
+}
+
+    .btn-primary:hover {
+        background: #008c3f;
+    }
+
+/* ... các class khác giữ nguyên ... */
+
+@media (max-width: 768px) {
+    .header h1 {
+        font-size: 2rem;
+    }
+
+    .header p {
+        font-size: 1rem;
+    }
+
+    .card a {
+        font-size: 1rem;
+        padding: 10px;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+}

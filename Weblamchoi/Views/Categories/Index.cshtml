@@ -1,0 +1,36 @@
+﻿@model IEnumerable<weblamchoi.Models.Category>
+@{
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+<h2>Quản lý danh mục</h2>
+<a asp-action="Create" class="btn btn-success mb-3">Thêm danh mục</a>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Tên danh mục</th>
+            <th>Mô tả</th>
+            <th>Ngày tạo</th>
+            <th>Thao tác</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.CategoryName</td>
+                <td>@item.Description</td>
+                <td>@item.CreatedAt.ToString("dd/MM/yyyy")</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.CategoryID" class="btn btn-warning btn-sm">Sửa</a>
+
+                    <form asp-action="Delete" asp-route-id="@item.CategoryID" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xoá?');">
+                        <button type="submit" class="btn btn-danger btn-sm">Xoá</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a asp-controller="AdminDashboard" asp-action="Index" class="btn btn-secondary">Quay lại Dashboard</a>

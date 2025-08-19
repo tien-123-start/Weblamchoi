@@ -1,0 +1,191 @@
+﻿@model weblamchoi.Models.Contact
+
+<style>
+    :root {
+        --primary-color: #00a650; /* Điện Máy Xanh green */
+        --secondary-color: #f5f5f5; /* Light gray background */
+        --text-color: #333; /* Dark text */
+        --border-color: #e0e0e0; /* Light border */
+        --accent-color: #ff6200; /* Orange for highlights */
+        --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        --border-radius: 8px;
+    }
+
+    body {
+        background: #fff;
+        font-family: 'Roboto', 'Segoe UI', sans-serif;
+        color: var(--text-color);
+    }
+
+    .page-header {
+        text-align: center;
+        margin: 1rem 0 2rem;
+    }
+
+        .page-header h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+    .contact-container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: var(--border-radius);
+        box-shadow: var(--card-shadow);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .contact-info, .contact-form {
+        padding: 1rem;
+    }
+
+        .contact-info h4, .contact-form h4 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .contact-info p {
+            font-size: 0.95rem;
+            color: var(--text-color);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .contact-form .form-control {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.5rem;
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+
+            .contact-form .form-control:focus {
+                border-color: var(--primary-color);
+                box-shadow: 0 0 0 2px rgba(0, 166, 80, 0.2);
+                outline: none;
+            }
+
+        .contact-form textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .contact-form .btn-primary {
+            background: var(--primary-color);
+            border: none;
+            color: #fff;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+            .contact-form .btn-primary:hover {
+                background: #008c3f;
+            }
+
+    .alert {
+        border-radius: 6px;
+        padding: 0.8rem;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+    }
+
+    .alert-info {
+        background: #e6f3ff;
+        color: #004085;
+    }
+
+    .alert-danger {
+        background: #ffe6e6;
+        color: #721c24;
+    }
+
+    media (max-width: 768px) {
+        .page-header h2
+
+    {
+        font-size: 1.5rem;
+    }
+
+    .contact-container {
+        padding: 1rem;
+    }
+
+    .contact-info, .contact-form {
+        padding: 0.8rem;
+    }
+
+        .contact-form .form-control {
+            font-size: 0.85rem;
+        }
+
+    }
+</style>
+
+<div class="page-header">
+    <h2><i class="bi bi-envelope"></i> Liên hệ</h2>
+</div>
+
+<div class="contact-container">
+    <div class="row">
+        <div class="col-md-6 contact-info">
+            <h4><i class="bi bi-info-circle"></i> Thông tin liên hệ</h4>
+            <p><i class="bi bi-geo-alt"></i> 123 Đường Điện Biên Phủ, Quận 3, TP. Hồ Chí Minh</p>
+            <p><i class="bi bi-telephone"></i> Hotline: 1800-123-456</p>
+            <p><i class="bi bi-envelope"></i> Email: support@dienmayxanh.com</p>
+            <p><i class="bi bi-clock"></i> Giờ làm việc: 8:00 - 21:00 (T2 - CN)</p>
+        </div>
+        <div class="col-md-6 contact-form">
+            <h4><i class="bi bi-chat-text"></i> Gửi yêu cầu của bạn</h4>
+            @if (TempData["ContactMessage"] != null)
+            {
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> @TempData["ContactMessage"]
+                </div>
+            }
+            @if (TempData["ContactError"] != null)
+            {
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> @TempData["ContactError"]
+                </div>
+            }
+            <form asp-action="Index" method="post">
+                <div class="mb-3">
+                    <input type="text" asp-for="FullName" class="form-control" placeholder="Họ và tên" required />
+                    <span asp-validation-for="FullName" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
+                    <input type="email" asp-for="Email" class="form-control" placeholder="Email" required />
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
+                    <input type="tel" asp-for="PhoneNumber" class="form-control" placeholder="Số điện thoại" required />
+                    <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
+                    <textarea asp-for="Message" class="form-control" placeholder="Nội dung" required></textarea>
+                    <span asp-validation-for="Message" class="text-danger"></span>
+                </div>
+                <button type="submit" class="btn btn-primary">Gửi liên hệ</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

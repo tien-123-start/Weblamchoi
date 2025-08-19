@@ -1,0 +1,35 @@
+﻿@model IEnumerable<Admin>
+
+<h2>Danh sách Admin</h2>
+<a asp-action="Create" class="btn btn-success">Thêm mới</a>
+
+<table class="table table-bordered mt-3">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Họ tên</th>
+            <th>Email</th>
+            <th>Ngày tạo</th>
+            <th>Thao tác</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var admin in Model)
+        {
+            <tr>
+                <td>@admin.AdminID</td>
+                <td>@admin.Username</td>
+                <td>@admin.FullName</td>
+                <td>@admin.Email</td>
+                <td>@admin.CreatedAt.ToString("dd/MM/yyyy")</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@admin.AdminID" class="btn btn-sm btn-warning">Sửa</a>
+                    <a asp-action="Delete" asp-route-id="@admin.AdminID" class="btn btn-sm btn-danger"
+                       onclick="return confirm('Bạn có chắc muốn xoá không?')">Xoá</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+    <a asp-controller="AdminDashboard" asp-action="Index" class="btn btn-secondary mt-3">Quay trở lại Dashboard</a>
+</table>

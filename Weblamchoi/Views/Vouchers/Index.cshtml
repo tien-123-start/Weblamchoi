@@ -1,0 +1,49 @@
+﻿@model IEnumerable<weblamchoi.Models.Voucher>
+@{
+    ViewData["Title"] = "Danh sách voucher";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+
+}
+
+<div class="container">
+    <h2 class="text-2xl font-bold mb-4">Danh sách Voucher</h2>
+    <a href="/Vouchers/Create" class="bg-blue-500 text-black px-4 py-2 rounded mb-3 inline-block">Thêm Voucher</a>
+
+    <table class="table-auto w-full border">
+        <thead>
+            <tr class="bg-gray-100">
+                <th class="p-2">Mã</th>
+                <th class="p-2">Giảm</th>
+                <th class="p-2">Ngày bắt đầu</th>
+                <th class="p-2">Ngày kết thúc</th>
+                <th class="p-2">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr class="border-t">
+                    <td class="p-2">@item.Code</td>
+                    <td class="p-2">
+                        @if (item.IsPercentage)
+                        {
+                            @($"{item.DiscountAmount}%")
+                        }
+                        else
+                        {
+                            @($"{item.DiscountAmount:N0} ₫")
+                        }
+                    </td>
+                    <td class="p-2">@item.StartDate.ToString("dd/MM/yyyy")</td>
+                    <td class="p-2">@item.EndDate.ToString("dd/MM/yyyy")</td>
+                    <td class="p-2">
+                        <a href="/Vouchers/Edit/@item.VoucherID" class="text-blue-600">Sửa</a> |
+                        <a href="/Vouchers/Delete/@item.VoucherID" class="text-red-600" onclick="return confirm('Xóa voucher này?')">Xóa</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <a asp-controller="AdminDashboard" asp-action="Index" class="btn btn-secondary">Về Dashboard</a>
+
+</div>

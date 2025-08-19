@@ -1,0 +1,466 @@
+﻿:root {
+    --primary-color: #00C851;
+    --secondary-color: #00A843;
+    --accent-color: #FF6B35;
+    --success-color: #28a745;
+    --warning-color: #FFC107;
+    --danger-color: #DC3545;
+    --light-bg: #f8f9fa;
+    --sidebar-width: 280px;
+    --green-gradient-start: #00C851;
+    --green-gradient-end: #00A843;
+}
+
+/* Body background nhẹ, không đè nội dung */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--light-bg);
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* Navbar */
+.admin-navbar {
+    background: linear-gradient(135deg, var(--green-gradient-start) 0%, var(--green-gradient-end) 100%);
+    box-shadow: 0 4px 20px rgba(0,200,81,0.3);
+    border: none;
+    padding: 0.8rem 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 1030; /* Giảm z-index để không cao quá */
+}
+
+/* Navbar brand */
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white !important;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+    .navbar-brand i {
+        font-size: 1.8rem;
+        color: var(--accent-color);
+    }
+
+/* Search bar */
+.search-container {
+    position: relative;
+    margin-right: 1.5rem;
+}
+
+.search-input {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 25px;
+    color: white;
+    padding: 0.5rem 1rem 0.5rem 2.5rem;
+    width: 250px;
+    transition: all 0.3s ease;
+}
+
+    .search-input:focus {
+        background: rgba(255,255,255,0.2);
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.3);
+        outline: none;
+        color: white;
+    }
+
+    .search-input::placeholder {
+        color: rgba(255,255,255,0.7);
+    }
+
+.search-icon {
+    position: absolute;
+    left: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255,255,255,0.7);
+}
+
+.search-btn {
+    background: var(--accent-color);
+    border: none;
+    border-radius: 25px;
+    color: white;
+    padding: 0.5rem 1.2rem;
+    margin-left: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+    .search-btn:hover {
+        background: #E55A2B;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+    }
+
+/* Dropdown container - Quan trọng để fix position */
+.dropdown {
+    position: relative;
+    z-index: 1040; /* Đảm bảo dropdown container có z-index cao */
+}
+
+/* Dropdown toggle button */
+.dropdown-toggle {
+    z-index: 1041;
+    position: relative;
+}
+
+/* Dropdown menu - Fix chính */
+.dropdown-menu {
+    position: absolute !important;
+    z-index: 1050 !important; /* Z-index cao nhất */
+    background: white !important;
+    border: 1px solid rgba(0,0,0,0.15) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+    min-width: 200px !important;
+    margin-top: 5px !important;
+    padding: 0.5rem 0 !important;
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+}
+
+/* Dropdown items */
+.dropdown-item {
+    padding: 0.5rem 1rem !important;
+    color: #333 !important;
+    text-decoration: none !important;
+    display: block !important;
+    transition: all 0.2s ease !important;
+    border: none !important;
+    background: transparent !important;
+    width: 100% !important;
+    text-align: left !important;
+}
+
+    .dropdown-item:hover {
+        background: var(--light-bg) !important;
+        color: var(--primary-color) !important;
+    }
+
+    .dropdown-item:focus {
+        background: var(--light-bg) !important;
+        color: var(--primary-color) !important;
+        outline: none !important;
+    }
+
+/* Dropdown header */
+.dropdown-header {
+    padding: 0.5rem 1rem !important;
+    color: #666 !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 0 !important;
+}
+
+/* Dropdown divider */
+.dropdown-divider {
+    margin: 0.5rem 0 !important;
+    border-top: 1px solid #e9ecef !important;
+}
+
+/* Notification badge */
+.position-relative .badge {
+    z-index: 1041;
+}
+
+/* Logout button */
+.logout-btn {
+    background: linear-gradient(135deg, var(--danger-color), #c0392b);
+    border: none;
+    border-radius: 25px;
+    color: white;
+    padding: 0.5rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+    .logout-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+        color: white;
+    }
+
+/* Main content - Giảm z-index để không che dropdown */
+.main-content {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    margin: 2rem auto;
+    padding: 2rem;
+    max-width: 1200px;
+    min-height: calc(100vh - 160px);
+    position: relative;
+    z-index: 1; /* Giảm z-index xuống */
+}
+
+    .main-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary-color), var(--accent-color), var(--warning-color));
+        border-radius: 4px 4px 0 0;
+        z-index: 1;
+    }
+
+/* Loading overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,0.9);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1100; /* Cao nhất cho loading */
+}
+
+/* Spinner */
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Notification */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: 10px;
+    color: white;
+    font-weight: 500;
+    z-index: 1200; /* Cao nhất cho notification */
+    transform: translateX(400px);
+    transition: transform 0.3s ease;
+}
+
+    .notification.show {
+        transform: translateX(0);
+    }
+
+    .notification.success {
+        background: var(--success-color);
+    }
+
+    .notification.error {
+        background: var(--danger-color);
+    }
+
+    .notification.warning {
+        background: var(--warning-color);
+    }
+
+/* Fix cho dropdown khi navbar collapsed */
+@media (max-width: 991px) {
+    .navbar-collapse {
+        background: rgba(0,0,0,0.1);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+
+    .dropdown-menu {
+        position: static !important;
+        display: block !important;
+        float: none !important;
+        width: auto !important;
+        margin-top: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: rgba(255,255,255,0.1) !important;
+    }
+
+    .dropdown-item {
+        color: white !important;
+    }
+
+        .dropdown-item:hover {
+            background: rgba(255,255,255,0.2) !important;
+            color: var(--accent-color) !important;
+        }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .search-input {
+        width: 180px;
+    }
+
+    .search-container {
+        margin-right: 0.5rem;
+    }
+
+    .main-content {
+        margin: 1rem;
+        padding: 1rem;
+    }
+
+    .admin-navbar {
+        padding: 0.5rem 1rem;
+    }
+
+    .navbar-brand {
+        font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .d-flex.ms-auto {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .search-input {
+        width: 100%;
+    }
+
+    .dropdown-menu {
+        right: 0 !important;
+        left: auto !important;
+    }
+}
+
+/* --- Notification Dropdown Custom Styles --- */
+#notificationDropdown .dropdown-menu {
+    min-width: 340px;
+    max-width: 400px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 1.5px 4px rgba(0,0,0,0.08);
+    padding: 0.5rem 0;
+    background: #fff;
+    border: none;
+    animation: fadeInDropdown 0.25s;
+}
+
+@keyframes fadeInDropdown {
+    from { opacity: 0; transform: translateY(10px);}
+    to   { opacity: 1; transform: translateY(0);}
+}
+
+#notificationDropdown .dropdown-header {
+    font-size: 1.08rem;
+    font-weight: 600;
+    color: #1976d2;
+    background: #f5faff;
+    padding: 0.75rem 1.25rem 0.5rem 1.25rem;
+    border-bottom: 1px solid #e3e8ee;
+    margin-bottom: 0.25rem;
+}
+
+#notificationMenu li {
+    margin-bottom: 2px;
+}
+
+#notificationMenu .dropdown-item {
+    display: block;
+    padding: 0.7rem 1.25rem 0.7rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.98rem;
+    color: #222;
+    background: transparent;
+    transition: background 0.18s, color 0.18s;
+    position: relative;
+    white-space: normal;
+    word-break: break-word;
+}
+
+#notificationMenu .dropdown-item:hover,
+#notificationMenu .dropdown-item:focus {
+    background: #e3f0ff;
+    color: #1976d2;
+    text-decoration: none;
+}
+
+#notificationMenu .dropdown-item small.text-muted {
+    font-size: 0.85em;
+    color: #888 !important;
+    display: block;
+    margin-bottom: 2px;
+}
+
+#notificationMenu .dropdown-divider {
+    margin: 0.3rem 0;
+}
+
+#notificationMenu .dropdown-item.text-center {
+    background: none !important;
+    color: #1976d2 !important;
+    font-weight: 600;
+    font-size: 1rem;
+    border-radius: 0;
+}
+
+#notificationDropdown .badge {
+    font-size: 0.85rem;
+    padding: 4px 8px;
+    background: #e53935;
+    color: #fff;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(229,57,53,0.12);
+}
+
+#notificationDropdown .dropdown-menu-end {
+    right: 0;
+    left: auto;
+}
+
+#notificationDropdown .dropdown-item[data-id]:before {
+    content: "\f0f3";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    color: #1976d2;
+    margin-right: 8px;
+    font-size: 1.1em;
+    vertical-align: middle;
+    opacity: 0.7;
+}
+
+#notificationMenu .dropdown-header,
+#notificationMenu .dropdown-item {
+    border-left: 3px solid transparent;
+}
+
+#notificationMenu .dropdown-item[data-id]:hover,
+#notificationMenu .dropdown-item[data-id]:focus {
+    border-left: 3px solid #1976d2;
+    background: #e3f0ff;
+}
+
+#notificationMenu .dropdown-header {
+    border-left: none;
+}
+
+#notificationMenu .dropdown-item:last-child {
+    margin-bottom: 0;
+}
+
+/* Optional: subtle shadow for the bell icon */
+#notificationBtn .bi-bell {
+    filter: drop-shadow(0 1px 2px rgba(25,118,210,0.12));
+}

@@ -1,0 +1,23 @@
+﻿@model Admin
+
+<h2>Thêm tài khoản Admin</h2>
+
+<form asp-action="Create" method="post">
+    <div class="form-group">
+        <label>Username</label>
+        <input asp-for="Username" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label>Password</label>
+        <input asp-for="PasswordHash" class="form-control" type="password" />
+    </div>
+    <div class="form-group">
+        <label>Họ tên</label>
+        <input asp-for="FullName" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label>Email</label>
+        <input asp-for="Email" class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-success mt-2">Lưu</button>
+</form>

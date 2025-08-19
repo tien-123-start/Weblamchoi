@@ -1,0 +1,102 @@
+﻿@model weblamchoi.Models.Order
+@{
+    ViewData["Title"] = "Chi tiết đơn hàng";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<h3>Chi tiết đơn hàng #@Model.OrderID</h3>
+<hr />
+
+<div class="mb-3">
+    <strong>Khách hàng:</strong> @Model.User?.FullName<br />
+    <strong>SĐT:</strong>@Model.User?.Phone<br />
+    <strong>Địa chỉ:</strong>@Model.User?.Address<br />
+    <strong>Ngày đặt:</strong> @Model.OrderDate.ToString("dd/MM/yyyy HH:mm")<br />
+    <strong>Trạng thái:</strong> @Model.Status<br />
+    <form asp-controller="Orders" asp-action="UpdateStatus" method="post" class="mt-2">
+        <input type="hidden" name="orderId" value="@Model.OrderID" />
+        <div class="mb-2">
+            <label class="form-label fw-bold">Cập nhật trạng thái:</label>
+            <div class="btn-group" role="group">
+                @foreach (var status in new[] { "Chờ xử lý", "Đã xác nhận", "Đang chuyển hàng", "Đang giao hàng", "Thành công", "Đã hủy" })
+                {
+                    <input type="radio" class="btn-check" name="newStatus" id="@status" value="@status" autocomplete="off"
+                           checked="@(Model.Status == status)">
+                    <label class="btn btn-outline-primary" for="@status">@status</label>
+                }
+            </div>
+        </div>
+        <button type="submit" class="btn btn-success btn-sm mt-2">Lưu trạng thái</button>
+    </form>
+
+    <strong>Giao hàng:</strong> @Model.Shipping?.ShippingAddress<br />
+    <strong>Thanh toán:</strong> @Model.Payment?.PaymentMethod
+</div>
+
+<h5>Sản phẩm trong đơn hàng:</h5>
+<table class="table table-bordered">
+    <thead class="table-light">
+        <tr>
+            <th>Sản phẩm</th>
+            <th>Số lượng</th>
+            <th>Giá</th>
+            <th>Thành tiền</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.OrderDetails)
+        {
+            <tr>
+                <td>@item.Product?.ProductName</td>
+                <td>@item.Quantity</td>
+                <td>@item.UnitPrice.ToString("N0") ₫</td>
+                <td>@((item.Quantity * item.UnitPrice).ToString("N0")) ₫</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div class="text-end">
+    <strong>Tổng cộng:</strong>
+    <span class="text-danger fs-5 fw-bold">
+        @((Model.TotalAmount ?? 0).ToString("N0")) ₫
+    </span>
+</div>
+
+<a asp-action="Index" class="btn btn-secondary mt-3">Quay lại danh sách</a>
+
+@section Scripts {
+    <!-- Thêm SweetAlert2 từ CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Kiểm tra TempData SuccessMessage
+            @if (TempData["SuccessMessage"] != null)
+            {
+                    <text>
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Thành công',
+                        text: '@TempData["SuccessMessage"]',
+                        confirmButtonText: 'OK',
+                        confirmButtonColor: '#28a745'
+                    });
+                    </text>
+            }
+
+            // Kiểm tra TempData ErrorMessage
+            @if (TempData["ErrorMessage"] != null)
+            {
+                    <text>
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'không thể thay đổi ',
+                        text: '@TempData["ErrorMessage"]',
+                        confirmButtonText: 'OK',
+                        confirmButtonColor: '#dc3545'
+                    });
+                    </text>
+            }
+        });
+    </script>
+}

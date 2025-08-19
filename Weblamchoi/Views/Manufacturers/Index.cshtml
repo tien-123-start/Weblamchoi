@@ -1,0 +1,37 @@
+﻿@model IEnumerable<weblamchoi.Models.Manufacturer>
+@{
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+<h2>Quản lý hãng sản xuất</h2>
+<a asp-action="Create" class="btn btn-success mb-3">Thêm hãng</a>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Tên hãng</th>
+            <th>Quốc gia</th>
+            <th>Website</th>
+            <th>Ngày tạo</th>
+            <th>Thao tác</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.ManufacturerName</td>
+                <td>@item.Country</td>
+                <td><a href="@item.Website" target="_blank">@item.Website</a></td>
+                <td>@item.CreatedAt.ToString("dd/MM/yyyy")</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.ManufacturerID" class="btn btn-warning btn-sm">Sửa</a>
+                    <form asp-action="Delete" asp-route-id="@item.ManufacturerID" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn xoá?');">
+                        <button type="submit" class="btn btn-danger btn-sm">Xoá</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a asp-controller="AdminDashboard" asp-action="Index" class="btn btn-secondary">Về Dashboard</a>

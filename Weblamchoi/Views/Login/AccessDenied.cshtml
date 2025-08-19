@@ -1,0 +1,8 @@
+﻿@{
+    ViewData["Title"] = "Truy cập bị từ chối";
+}
+<div class="container text-center mt-5">
+    <h2 class="text-danger">Bạn không có quyền truy cập trang này</h2>
+    <p>Vui lòng đăng nhập bằng tài khoản có quyền phù hợp.</p>
+    <a href="@Url.Action("Index", "Login")" class="btn btn-primary mt-3">Quay lại đăng nhập</a>
+</div>

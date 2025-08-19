@@ -1,0 +1,272 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewData["Title"] - Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/admin.css" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+</head>
+<body>
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Navbar Admin hiện đại -->
+    <nav class="navbar navbar-expand-lg admin-navbar">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/AdminDashboard">
+                <i class="fas fa-cogs"></i>
+                <span>Điện Máy Xanh Admin</span>
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="d-flex ms-auto align-items-center">
+                    <!-- Tìm kiếm hiện đại -->
+                    <form class="d-flex search-container" method="get" action="/Search">
+                        <div class="position-relative">
+                            <i class="fas fa-search search-icon"></i>
+                            <input class="form-control search-input" type="search" name="q" placeholder="Tìm kiếm sản phẩm, đơn hàng..." />
+                        </div>
+                        <button class="btn search-btn" type="submit">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </form>
+
+                    <!-- User menu -->
+                    <div class="dropdown me-3">
+                        <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-1"></i>
+                            Admin
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/Profile"><i class="fas fa-user me-2"></i>Hồ sơ</a></li>
+                            <li><a class="dropdown-item" href="/Settings"><i class="fas fa-cog me-2"></i>Cài đặt</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form asp-controller="Login" asp-action="Logout" method="post" class="m-0">
+                                    <button type="submit" class="dropdown-item">
+                                        <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+
+                   
+                    <!-- Notifications -->
+                    <div class="dropdown me-3" id="notificationDropdown">
+                        <button class="btn btn-outline-light position-relative dropdown-toggle"
+                                type="button"
+                                id="notificationBtn"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false">
+                            <i class="bi bi-bell"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="orderCount">0</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationBtn" id="notificationMenu">
+                            <li><h6 class="dropdown-header">Đang tải thông báo...</h6></li>
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Nội dung chính -->
+    <div class="container-fluid">
+        <div class="main-content">
+            @RenderBody()
+        </div>
+    </div>
+    @RenderSection("Scripts", required: false)
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-Qm+Jow5U9R6Un/3ZEMJrhI56jWZT+WlUhqAlfVv4oMdCmUM2PQ5QnOZ5EeF5J2A0"
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+
+    <script>
+        // Loading overlay
+        function showLoading() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        // Show loading on form submit
+        document.addEventListener('DOMContentLoaded', function() {
+            const forms = document.querySelectorAll('form');
+            forms.forEach(form => {
+                form.addEventListener('submit', function() {
+                    showLoading();
+                });
+            });
+
+            // Hide loading when page loads
+            window.addEventListener('load', function() {
+                hideLoading();
+            });
+        });
+
+        // Notification system
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'exclamation-triangle'} me-2"></i>
+                ${message}
+            `;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.classList.add('show'), 100);
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => document.body.removeChild(notification), 300);
+            }, 3000);
+        }
+
+        // Search enhancement
+        document.querySelector('.search-input').addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') this.closest('form').submit();
+        });
+
+        // Smooth scrolling
+        document.documentElement.style.scrollBehavior = 'smooth';
+
+        // SignalR connection for real-time notifications
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/notificationHub")
+            .withAutomaticReconnect()
+            .build();
+
+        // Start SignalR connection
+        async function startConnection() {
+            try {
+                await connection.start();
+                console.log("SignalR Connected.");
+            } catch (err) {
+                console.error("SignalR Connection Error: ", err);
+                setTimeout(startConnection, 5000); // Retry after 5 seconds
+            }
+        }
+
+        // Handle real-time notification
+        connection.on("ReceiveOrderNotification", (message, orderId) => {
+            const notificationMenu = document.getElementById('notificationMenu');
+            const orderCount = document.getElementById('orderCount');
+
+            // Update order count
+            let currentCount = parseInt(orderCount.innerText) || 0;
+            orderCount.innerText = currentCount + 1;
+
+            // Remove "No notifications" message if present
+            if (notificationMenu.innerHTML.includes("Không có thông báo mới")) {
+                notificationMenu.innerHTML = '<li><h6 class="dropdown-header">Thông báo mới</h6></li>';
+            }
+
+            // Add new notification
+            const listItem = document.createElement('li');
+            listItem.innerHTML = `
+                <a class="dropdown-item" href="/Admin/Orders/Details/${orderId}">
+                    <small class="text-muted">${new Date().toLocaleString()}</small><br>
+                    ${message}
+                </a>`;
+            notificationMenu.insertBefore(listItem, notificationMenu.children[1] || notificationMenu.children[0].nextSibling);
+
+            // Show toast notification
+            showNotification(message, 'success');
+        });
+
+        // Load initial notifications from server
+        async function loadNotifications() {
+            console.log("Đang gọi API thông báo...");
+
+            const notificationMenu = document.getElementById('notificationMenu');
+            const orderCount = document.getElementById('orderCount');
+
+            try {
+                const res = await fetch('/admin/notifications');
+                if (!res.ok) throw new Error(`Status: ${res.status}`);
+                const data = await res.json();
+
+                notificationMenu.innerHTML = '';
+
+                if (!Array.isArray(data) || data.length === 0) {
+                    notificationMenu.innerHTML = '<li><h6 class="dropdown-header">Không có thông báo mới</h6></li>';
+                    orderCount.innerText = '0'; 
+                    return;
+                }
+
+                orderCount.innerText = data.length.toString();
+
+                const headerItem = document.createElement('li');
+                headerItem.innerHTML = '<h6 class="dropdown-header">Thông báo mới</h6>';
+                notificationMenu.appendChild(headerItem);
+                data.forEach(item => {
+                    // Sử dụng item.Link nếu có, nếu không thì fallback về /Admin/Orders/Details/{id}
+                    const link = item.link || item.Link || `/Admin/Orders/Details/${item.notificationId || item.NotificationId || item.id || item.Id}`;
+                    const createdAt = item.Time || new Date(item.createdAt || item.CreatedAt).toLocaleString();
+                    const message = item.message || item.Message || 'Đơn hàng mới';
+
+                    const listItem = document.createElement('li');
+                       listItem.innerHTML = `
+                        <a class="dropdown-item" href="${link}" data-id="${item.notificationId || item.id || item.Id}">
+                            <small class="text-muted">${createdAt}</small><br>
+                            ${message}
+                        </a>`;
+
+                    notificationMenu.appendChild(listItem);
+                });
+
+                 notificationMenu.innerHTML += `
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <button class="dropdown-item text-center text-primary fw-bold" id="markAllReadBtn">
+                            <i class="bi bi-check2-all me-1"></i> Đánh dấu tất cả là đã đọc
+                        </button>
+                    </li>
+                    <li><a class="dropdown-item text-center" href="/Admin/Orders">Xem tất cả</a></li>`;
+
+            } catch (error) {
+                console.error('Lỗi khi tải thông báo:', error);
+                notificationMenu.innerHTML = '<li><h6 class="dropdown-header text-danger">Lỗi khi tải thông báo</h6></li>';
+                orderCount.innerText = '!';
+            }
+        }
+        loadNotifications();
+
+        // Khi click vào một thông báo cụ thể
+        document.getElementById('notificationMenu').addEventListener('click', async function (e) {
+            const item = e.target.closest('a.dropdown-item');
+            if (!item) return;
+
+            const notificationId = item.dataset.id || item.getAttribute('data-id');
+            const url = item.getAttribute('href');
+            if (!notificationId || !url) return;
+
+            // Đánh dấu đã đọc, sau đó chuyển trang (không thao tác DOM ở đây)
+            try {
+                await fetch(`/admin/notifications/mark-read/${notificationId}`, { method: 'POST' });
+            } catch (err) {
+                // Không cần xử lý lỗi, vẫn chuyển trang
+            }
+            window.location.href = url;
+        });
+
+    </script>
+
+</body>
+</html>

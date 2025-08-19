@@ -1,0 +1,341 @@
+﻿@model weblamchoi.Models.Product
+@using weblamchoi.Models
+@{
+    ViewData["Title"] = "Chi tiết sản phẩm";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var canComment = ViewBag.CanComment as bool? ?? false;
+    var reviews = ViewBag.Reviews as List<weblamchoi.Models.Review>;
+    // Giả định DiscountPercentage từ BonusProduct, nếu không có thì mặc định 10%
+    var discountPercentage = Model.BonusProduct != null ? (Model.BonusProduct.DiscountPercentage ?? 10) : 0;
+}
+<link rel="stylesheet" href="~/css/Details.css" asp-append-version="true" />
+
+<div class="product-container">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+        <a href="/">Trang chủ</a> &gt;
+        <a href="@Url.Action("Index", "Products")">Sản phẩm</a> &gt;
+        <span>@Model.ProductName</span>
+    </nav>
+
+    <div class="product-grid">
+        <!-- Hình ảnh sản phẩm -->
+        <div class="product-image">
+            <img id="mainImage" src="@Model.ImageURL" alt="@Model.ProductName" />
+            @if (Model.Thumbnails != null && Model.Thumbnails.Any())
+            {
+                <div class="thumbnails">
+                    @foreach (var thumb in Model.Thumbnails)
+                    {
+                        var thumbPath = thumb.ThumbnailURL.StartsWith("/") ? Url.Content(thumb.ThumbnailURL) : Url.Content("/" + thumb.ThumbnailURL);
+                        <img src="@thumbPath" alt="Thumbnail" class="thumbnail-img" onclick="updateMainImage(this)" />
+                    }
+                </div>
+            }
+            else
+            {
+                <p>Chưa có ảnh nhỏ.</p>
+            }
+        </div>
+
+        <!-- Thông tin sản phẩm -->
+        <div class="product-info">
+            <h1 class="product-title">@Model.ProductName</h1>
+            <p class="product-price" id="productPrice">@Model.Price.ToString("N0") ₫</p>
+            <div id="priceBreakdown" style="font-size:14px; color:#555;"></div>
+
+            @if (Model.BonusProduct != null)
+            {
+                <p class="product-discounted-price hidden" id="discountedPrice"></p>
+                <p class="product-discount-amount hidden" id="discountAmount"></p>
+            }
+
+            <!-- Thông số kỹ thuật -->
+            <div class="specs">
+                <h3>Thông số kỹ thuật</h3>
+                <dl>
+                    <div><dt>Hãng sản xuất:</dt><dd>@Model.Manufacturer?.ManufacturerName</dd></div>
+                    <div><dt>Danh mục:</dt><dd>@Model.Category?.CategoryName</dd></div>
+                    <div><dt>Xuất xứ:</dt><dd>Việt Nam</dd></div>
+                    <div><dt>Bảo hành:</dt><dd>12 tháng</dd></div>
+                </dl>
+            </div>
+
+            <!-- Quà khuyến mãi -->
+            <div class="bonus">
+                <h3>Quà khuyến mãi</h3>
+                @if (Model.BonusProduct != null)
+                {
+                    <div class="bonus-content">
+                        @if (!string.IsNullOrEmpty(Model.BonusProduct.ImageURL))
+                        {
+                            string bonusImagePath = Model.BonusProduct.ImageURL.StartsWith("http") ? Model.BonusProduct.ImageURL : Url.Content(Model.BonusProduct.ImageURL);
+                            <img src="@bonusImagePath" alt="@Model.BonusProduct.ProductName" />
+                        }
+                        else
+                        {
+                            <span>Chưa có ảnh</span>
+                        }
+                        <div>
+                            <h4>@Model.BonusProduct.ProductName</h4>
+                            <p>@Model.BonusProduct.Price.ToString("N0") ₫</p>
+                            <p>
+                                Từ: @(Model.StartDate?.ToString("dd/MM/yyyy") ?? "Không xác định")<br />
+                                Đến: @(Model.EndDate?.ToString("dd/MM/yyyy") ?? "Không xác định")
+                            </p>
+                            <div class="mt-2">
+                                <input type="checkbox" id="applyDiscount" />
+                                <label for="applyDiscount">
+                                    Áp dụng khuyến mãi (@Model.DiscountPercentage% giảm giá + quà tặng)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <p>Không có quà khuyến mãi</p>
+                }
+            </div>
+
+            <!-- Số lượng và Thêm vào giỏ hàng -->
+            <div class="quantity-cart">
+                <div>
+                    <label for="quantityInput">Số lượng:</label>
+                    <input id="quantityInput" type="number" min="1" max="@Model.Quantity" value="1" @(Model.Quantity == 0 ? "disabled" : "") />
+                </div>
+                @if (Model.Quantity > 0)
+                {
+                    <form id="addToCartForm" asp-controller="Cart" asp-action="Add" method="post">
+                        <input type="hidden" name="productId" value="@Model.ProductID" />
+                        <input id="hiddenQuantity" type="hidden" name="quantity" value="1" />
+                        <input id="hiddenPrice" type="hidden" name="price" value="@Model.Price" />
+                        <input id="hiddenBonusProductId" type="hidden" name="bonusProductId" value="@(Model.BonusProduct?.ProductID)" />
+                        <input id="hiddenBonusPrice" type="hidden" name="bonusPrice" value="@(Model.BonusProduct?.Price ?? 0)" />
+                        <input id="hiddenApplyDiscount" type="hidden" name="applyDiscount" value="false" />
+                        <button type="submit">Thêm vào giỏ hàng</button>
+                    </form>
+                }
+                else
+                {
+                    <p>Hết hàng</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Mô tả và Đánh giá -->
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="description">Mô tả</button>
+        <button class="tab-btn" data-tab="reviews">Đánh giá</button>
+    </div>
+
+    <div id="description" class="tab-content active">
+        @Html.Raw(Model.Description)
+    </div>
+    <div id="reviews" class="tab-content">
+        <h3>Đánh giá & Bình luận</h3>
+        @if (TempData["ReviewError"] != null)
+        {
+            <div class="error-message">
+                <strong>Lỗi:</strong> @TempData["ReviewError"]
+            </div>
+        }
+        @if (reviews != null && reviews.Any())
+        {
+            @foreach (var review in reviews)
+            {
+                <div class="review">
+                    <div>
+                        <strong>@review.User?.FullName</strong>
+                        <small>@review.ReviewDate.ToString("dd/MM/yyyy HH:mm")</small>
+                    </div>
+                    <div>
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            <span>@(i <= review.Rating ? "★" : "☆")</span>
+                        }
+                    </div>
+                    <p>@review.Comment</p>
+                </div>
+            }
+        }
+        else
+        {
+            <p>Chưa có đánh giá nào.</p>
+        }
+        @if (canComment)
+        {
+            <hr>
+            <h4>Viết bình luận</h4>
+            <form asp-action="AddReview" method="post" class="review-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="productId" value="@Model.ProductID" />
+                <div>
+                    <label>Đánh giá:</label>
+                    <select name="rating">
+                        <option value="1">1 sao</option>
+                        <option value="2">2 sao</option>
+                        <option value="3">3 sao</option>
+                        <option value="4">4 sao</option>
+                        <option value="5">5 sao</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Bình luận:</label>
+                    <textarea name="comment" rows="4"></textarea>
+                </div>
+                <button type="submit">Gửi bình luận</button>
+            </form>
+        }
+        else
+        {
+            <p>Vui lòng <a href="/Login/Index">đăng nhập và mua sản phẩm</a> để gửi bình luận.</p>
+        }
+    </div>
+
+    <!-- Sản phẩm liên quan -->
+    <div class="related-products">
+        <h3>Sản phẩm liên quan</h3>
+        @if (ViewBag.RelatedProducts != null && ((List<weblamchoi.Models.Product>)ViewBag.RelatedProducts).Any())
+        {
+            @foreach (var related in (List<weblamchoi.Models.Product>)ViewBag.RelatedProducts)
+            {
+                <div class="related-product">
+                    <a href="@Url.Action("Details", "Products", new { id = related.ProductID })">
+                        <img src="@related.ImageURL" alt="@related.ProductName" />
+                        <h4>@related.ProductName</h4>
+                        <p>@related.Price.ToString("N0") ₫</p>
+                    </a>
+                </div>
+            }
+        }
+        else
+        {
+            <p>Chưa có sản phẩm liên quan nào.</p>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <!-- SweetAlert2 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // ==== SweetAlert2 thông báo ====
+            @if (TempData["SuccessMessage"] != null)
+            {
+                    <text>
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Thành công',
+                        text: '@TempData["SuccessMessage"]',
+                        confirmButtonText: 'OK',
+                        confirmButtonColor: '#28a745'
+                    });
+                    </text>
+            }
+            @if (TempData["ErrorMessage"] != null)
+            {
+                    <text>
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Lỗi',
+                        text: '@TempData["ErrorMessage"]',
+                        confirmButtonText: 'OK',
+                        confirmButtonColor: '#dc3545'
+                    });
+                    </text>
+            }
+
+            // ==== Tab switch ====
+            document.querySelectorAll(".tab-btn").forEach(btn => {
+                btn.addEventListener("click", function () {
+                    const tabName = this.getAttribute("data-tab");
+                    document.querySelectorAll(".tab-content").forEach(tab => tab.classList.remove("active"));
+                    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+                    document.getElementById(tabName).classList.add("active");
+                    this.classList.add("active");
+                });
+            });
+
+            // Mặc định mở tab đầu tiên
+            const firstTab = document.querySelector(".tab-btn");
+            if (firstTab) firstTab.click();
+
+            // ==== Update main image ====
+            window.updateMainImage = function (el) {
+                document.getElementById("mainImage").src = el.src;
+                document.querySelectorAll('.thumbnail-img').forEach(img => img.classList.remove('active'));
+                el.classList.add('active');
+            };
+
+            // ==== Update quantity ====
+            const quantityInput = document.getElementById("quantityInput");
+            const hiddenQuantity = document.getElementById("hiddenQuantity");
+            if (quantityInput && hiddenQuantity) {
+                quantityInput.addEventListener("change", () => {
+                    let val = parseInt(quantityInput.value);
+                    if (isNaN(val) || val < 1) val = 1;
+                    else if (val > @Model.Quantity) val = @Model.Quantity;
+                    quantityInput.value = val;
+                    hiddenQuantity.value = val;
+                });
+            }
+
+                  const priceEl = document.getElementById("productPrice");
+        const checkbox = document.getElementById("applyDiscount");
+        const priceBreakdownEl = document.getElementById("priceBreakdown");
+        const hiddenPriceInput = document.getElementById("hiddenPrice");
+        const hiddenBonusProductId = document.getElementById("hiddenBonusProductId");
+        const hiddenBonusPrice = document.getElementById("hiddenBonusPrice");
+        const hiddenApplyDiscount = document.getElementById("hiddenApplyDiscount");
+
+        const originalPrice = parseFloat("@Model.Price") || 0; // Sử dụng parseFloat thay vì parseInt
+        const discountPercentage = parseFloat("@(Model.BonusProduct?.DiscountPercentage ?? 10)") || 0;
+        const bonusProductPrice = parseFloat("@(Model.BonusProduct?.Price ?? 0)") || 0;
+
+        const formatCurrency = (amount) => {
+            return amount.toLocaleString('vi-VN') + ' ₫';
+        };
+
+        function updatePrice() {
+            let discountedProductPrice = originalPrice;
+            let finalPrice = originalPrice;
+            let breakdownText = "";
+            let discountAmount = 0;
+
+            if (checkbox && checkbox.checked) {
+                discountAmount = originalPrice * (discountPercentage / 100);
+                discountedProductPrice = originalPrice - discountAmount;
+                finalPrice = discountedProductPrice + bonusProductPrice;
+
+                priceEl.innerHTML = `<span class="text-red-600 font-bold">${formatCurrency(originalPrice)}</span>`;
+                breakdownText = `
+                    <p>Giá sản phẩm: ${formatCurrency(originalPrice)}</p>
+                    <p>Giá quà tặng: ${formatCurrency(bonusProductPrice)}</p>
+                    <p>Giảm giá (${discountPercentage}%): -${formatCurrency(discountAmount)}</p>
+                    <p><strong>Tổng cộng: ${formatCurrency(finalPrice)}</strong></p>
+                `;
+                hiddenApplyDiscount.value = "true";
+                hiddenPriceInput.value = discountedProductPrice.toFixed(2); // Làm tròn 2 chữ số thập phân
+                if (hiddenBonusProductId) hiddenBonusProductId.value = "@(Model.BonusProduct?.ProductID)";
+                if (hiddenBonusPrice) hiddenBonusPrice.value = bonusProductPrice.toFixed(2);
+            } else {
+                finalPrice = originalPrice;
+                priceEl.innerHTML = `<span class="font-bold">${formatCurrency(finalPrice)}</span>`;
+                breakdownText = `<p>Giá sản phẩm: ${formatCurrency(originalPrice)}</p>`;
+                hiddenApplyDiscount.value = "false";
+                hiddenPriceInput.value = originalPrice.toFixed(2);
+                if (hiddenBonusProductId) hiddenBonusProductId.value = "";
+                if (hiddenBonusPrice) hiddenBonusPrice.value = "0";
+            }
+
+            if (priceBreakdownEl) priceBreakdownEl.innerHTML = breakdownText;
+        }
+
+        if (checkbox) checkbox.addEventListener("change", updatePrice);
+        updatePrice();
+        });
+    </script>
+}

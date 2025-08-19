@@ -1,0 +1,39 @@
+﻿@model weblamchoi.Models.Product
+@{
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+<h2>Giảm giá sản phẩm</h2>
+
+<form asp-action="Discount" method="post">
+    <input type="hidden" asp-for="ProductID" />
+
+    <div class="form-group">
+        <label>Tên sản phẩm</label>
+        <input class="form-control" value="@Model.ProductName" disabled />
+    </div>
+
+    <div class="form-group">
+        <label>Giá gốc</label>
+        <input asp-for="OriginalPrice" class="form-control" readonly />
+    </div>
+
+    <div class="form-group">
+        <label>Giá đã giảm</label>
+        <input asp-for="Price" class="form-control" />
+        <span asp-validation-for="Price" class="text-danger"></span>
+    </div>
+    <!-- Thêm hiển thị mức giảm giá -->
+    <div class="form-group">
+        <label>Mức giảm giá</label>
+        <input class="form-control"
+               value="@(Model.OriginalPrice != null ? ((100 - ((double)Model.Price / (double)Model.OriginalPrice * 100)).ToString("N0")) + "%" : "Chưa có giá gốc")" readonly />
+    </div>
+
+
+    <button type="submit" class="btn btn-primary mt-3">Lưu giảm giá</button>
+    <a asp-action="Index" class="btn btn-secondary mt-3">Quay lại</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

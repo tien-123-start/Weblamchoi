@@ -1,0 +1,37 @@
+﻿@model IEnumerable<weblamchoi.Models.Order>
+@{
+    ViewData["Title"] = "Quản lý đơn hàng";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<h2 class="mb-4">Danh sách đơn hàng</h2>
+
+<table class="table table-bordered table-hover">
+    <thead class="table-primary">
+        <tr>
+            <th>Mã đơn</th>
+            <th>Khách hàng</th>
+            <th>Ngày đặt</th>
+            <th>Tổng tiền</th>
+            <th>Trạng thái</th>
+            <th>Hành động</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var order in Model)
+        {
+            <tr>
+                <td>@order.OrderID</td>
+                <td>@order.User?.FullName</td>
+                <td>@order.OrderDate.ToString("dd/MM/yyyy HH:mm")</td>
+                <td class="text-danger fw-bold">@((order.TotalAmount ?? 0).ToString("N0")) ₫</td>
+                <td>@order.Status</td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@order.OrderID" class="btn btn-sm btn-info">Chi tiết</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+    <a asp-controller="AdminDashboard" asp-action="Index" class="btn btn-secondary mt-3">Quay trở lại Dashboard</a>
+
+</table>

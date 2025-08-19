@@ -1,0 +1,24 @@
+﻿@model weblamchoi.Models.Manufacturer
+@{
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+<h2>Sửa hãng sản xuất</h2>
+
+<form asp-action="Edit" method="post">
+    <input type="hidden" asp-for="ManufacturerID" />
+
+    <div class="form-group">
+        <label>Tên hãng</label>
+        <input asp-for="ManufacturerName" class="form-control" required />
+    </div>
+    <div class="form-group">
+        <label>Quốc gia</label>
+        <input asp-for="Country" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label>Website</label>
+        <input asp-for="Website" class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-primary mt-2">Cập nhật</button>
+    <a asp-action="Index" class="btn btn-secondary mt-2">Quay lại</a>
+</form>
