@@ -6,24 +6,14 @@ namespace weblamchoi.Models
     {
         public int UserID { get; set; }
 
-        [Required]
-        public string FullName { get; set; }
+        [Required(ErrorMessage = "Họ và tên là bắt buộc")]
+        [StringLength(100, ErrorMessage = "Họ và tên không được vượt quá 100 ký tự")]
+        public required string FullName { get; set; }
 
-        [Required, EmailAddress]
-        public string Email { get; set; }
+        [EmailAddress(ErrorMessage = "Email không hợp lệ")]
+        public required string Email { get; set; }
 
-        public string Phone { get; set; }
-        public string Address { get; set; }
-
-        // Trường đổi mật khẩu
-        [DataType(DataType.Password)]
-        public string CurrentPassword { get; set; }
-
-        [DataType(DataType.Password)]
-        public string NewPassword { get; set; }
-
-        [DataType(DataType.Password)]
-        [Compare("NewPassword", ErrorMessage = "Mật khẩu xác nhận không khớp.")]
-        public string ConfirmPassword { get; set; }
+        public string? Phone { get; set; } // Nullable, as it's optional
+        public string? Address { get; set; } // Nullable, as it's optional
     }
 }

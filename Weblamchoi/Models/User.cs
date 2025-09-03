@@ -1,6 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace weblamchoi.Models
 {
@@ -9,9 +8,9 @@ namespace weblamchoi.Models
         public int UserID { get; set; }
         public string FullName { get; set; }
         public string Email { get; set; }
-        
+
         public string PasswordHash { get; set; }
-        [NotMapped] // Không tạo cột trong DB
+        [NotMapped]
         [DataType(DataType.Password)]
         public string Password { get; set; }
         public string Phone { get; set; }
@@ -22,6 +21,5 @@ namespace weblamchoi.Models
         public virtual ICollection<Cart> Carts { get; set; } = new List<Cart>();
         public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
         public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
-
     }
 }

@@ -9,7 +9,7 @@ using weblamchoi.Models;
 
 namespace weblamchoi.Controllers.Admin
 {
-    [Authorize] // Bắt buộc phải login cho toàn bộ controller
+    [Authorize]
     public class UsersController : Controller
     {
         private readonly DienLanhDbContext _context;
@@ -31,7 +31,7 @@ namespace weblamchoi.Controllers.Admin
         {
             if (ModelState.IsValid)
             {
-                user.PasswordHash = HashPassword(user.PasswordHash); // Băm mật khẩu
+                user.PasswordHash = HashPassword(user.PasswordHash);
                 _context.Users.Add(user);
                 _context.SaveChanges();
                 return RedirectToAction("Index");
@@ -50,16 +50,30 @@ namespace weblamchoi.Controllers.Admin
         public IActionResult Profile()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId)) return RedirectToAction("Index", "Login");
+            if (string.IsNullOrEmpty(userId))
+            {
+                Console.WriteLine("User ID is null or empty");
+                return RedirectToAction("Index", "Login");
+            }
 
-            var user = _context.Users.Find(int.Parse(userId));
-            if (user == null) return NotFound();
+            if (!int.TryParse(userId, out int parsedUserId))
+            {
+                Console.WriteLine("Invalid User ID format");
+                return RedirectToAction("Index", "Login");
+            }
+
+            var user = _context.Users.Find(parsedUserId);
+            if (user == null)
+            {
+                Console.WriteLine($"User not found for ID: {parsedUserId}");
+                return NotFound();
+            }
 
             var model = new UserProfileViewModel
             {
                 UserID = user.UserID,
                 FullName = user.FullName,
-                Email = user.Email,
+                Email = user.Email, // Lấy giá trị Email từ database
                 Phone = user.Phone,
                 Address = user.Address
             };
@@ -71,32 +85,90 @@ namespace weblamchoi.Controllers.Admin
         public IActionResult Profile(UserProfileViewModel model)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId) || model.UserID != int.Parse(userId)) return Unauthorized();
+            if (string.IsNullOrEmpty(userId) || model.UserID != int.Parse(userId))
+            {
+                Console.WriteLine("Unauthorized access or invalid UserID");
+                return Unauthorized();
+            }
 
             var user = _context.Users.Find(int.Parse(userId));
+            if (user == null)
+            {
+                Console.WriteLine("User not found");
+                return NotFound();
+            }
+
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
+                Console.WriteLine("ModelState errors: " + string.Join(", ", errors));
+                ViewBag.Errors = errors;
+                return View(model);
+            }
+
+            Console.WriteLine($"Current FullName: {user.FullName}, New FullName: {model.FullName}");
+            user.FullName = model.FullName;
+            user.Phone = model.Phone;
+            user.Address = model.Address;
+
+            try
+            {
+                _context.Update(user); // Sử dụng Update thay vì đặt State trực tiếp
+                int changes = _context.SaveChanges();
+                Console.WriteLine($"Number of changes saved: {changes}");
+                if (changes > 0)
+                {
+                    ViewBag.Success = "Cập nhật thông tin thành công.";
+                }
+                else
+                {
+                    ViewBag.Error = "Không có thay đổi nào được lưu vào cơ sở dữ liệu.";
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"SaveChanges failed: {ex.Message}");
+                ViewBag.Error = $"Lỗi khi lưu dữ liệu: {ex.Message}";
+            }
+
+            return View(model);
+        }
+        public IActionResult ChangePassword()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return RedirectToAction("Index", "Login");
+
+            var model = new ChangePasswordViewModel
+            {
+                UserID = int.Parse(userId)
+            };
+            return View(model);
+        }
+
+        [HttpPost]
+        public IActionResult ChangePassword(ChangePasswordViewModel model)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId) || model.UserID != int.Parse(userId))
+                return Unauthorized();
+
+            var user = _context.Users.FirstOrDefault(u => u.UserID == int.Parse(userId));
             if (user == null) return NotFound();
 
             if (!ModelState.IsValid)
                 return View(model);
 
-            // Đổi mật khẩu
-            if (!string.IsNullOrEmpty(model.CurrentPassword) && !string.IsNullOrEmpty(model.NewPassword))
+            if (HashPassword(model.CurrentPassword) != user.PasswordHash)
             {
-                var hash = HashPassword(model.CurrentPassword);
-                if (user.PasswordHash != hash)
-                {
-                    ModelState.AddModelError("CurrentPassword", "Mật khẩu hiện tại không đúng.");
-                    return View(model);
-                }
-                user.PasswordHash = HashPassword(model.NewPassword);
+                ModelState.AddModelError("CurrentPassword", "Mật khẩu hiện tại không đúng.");
+                return View(model);
             }
 
-            user.FullName = model.FullName;
-            user.Phone = model.Phone;
-            user.Address = model.Address;
-
+            user.PasswordHash = HashPassword(model.NewPassword);
+            _context.Entry(user).State = EntityState.Modified;
             _context.SaveChanges();
-            ViewBag.Success = "Cập nhật thành công.";
+
+            ViewBag.Success = "Đổi mật khẩu thành công.";
             return View(model);
         }
 
@@ -146,8 +218,7 @@ namespace weblamchoi.Controllers.Admin
             var query = _context.Orders
                 .Where(o => o.UserID == userIdInt);
 
-            // Chỉ hiển thị các đơn đã thanh toán hoặc đang giao hàng/hoàn tất
-            query = query.Where(o => o.Status != "Tạm giữ" && o.Status != "Chờ thanh toán" );
+            query = query.Where(o => o.Status != "Tạm giữ" && o.Status != "Chờ thanh toán");
 
             if (!string.IsNullOrEmpty(status))
                 query = query.Where(o => o.Status == status);
@@ -166,7 +237,6 @@ namespace weblamchoi.Controllers.Admin
 
             return View(orders);
         }
-
 
         [HttpPost]
         public IActionResult CancelOrder(int orderId)
