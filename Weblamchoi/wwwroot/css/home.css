@@ -1,4 +1,7 @@
-﻿:root {
+﻿/* =========================
+   🎨 Base Styles & Variables
+   ========================= */
+:root {
     --primary-color: #2563eb;
     --primary-dark: #1d4ed8;
     --secondary-color: #10b981;
@@ -7,6 +10,7 @@
     --text-light: #6b7280;
     --bg-light: #f8fafc;
     --border-color: #e5e7eb;
+    --danger-color: #ff5722;
 }
 
 body {
@@ -15,66 +19,39 @@ body {
     color: var(--text-dark);
     background-color: var(--bg-light);
 }
+
+/* =========================
+   🖼 Banner
+   ========================= */
 .banner-wrapper {
     width: 100%;
-    height: 400px; /* chỉnh chiều cao mong muốn */
+    height: 400px;
     overflow: hidden;
+    position: relative;
 }
 
     .banner-wrapper img {
         width: 100%;
         height: 100%;
-        object-fit: cover; /* hoặc cover */
+        object-fit: cover;
+        transition: transform 0.5s ease, opacity 0.5s ease;
     }
 
-        .main-banner img:hover {
-            transform: scale(1.02);
+        .banner-wrapper img:hover {
+            transform: scale(1.05);
             opacity: 0.95;
         }
 
-.sub-banner-carousel {
-    margin-bottom: 2rem;
-}
-
-    .sub-banner-carousel .carousel-item img {
-        height: 300px;
-        object-fit: cover;
-        border-radius: 15px;
-        background: white;
-        padding: 10px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        transition: transform 0.3s ease;
-    }
-
-        .sub-banner-carousel .carousel-item img:hover {
-            transform: scale(1.03);
-        }
-
-    .sub-banner-carousel .carousel-control-prev,
-    .sub-banner-carousel .carousel-control-next {
-        width: 5%;
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 15px;
-        transition: background 0.3s ease;
-    }
-
-        .sub-banner-carousel .carousel-control-prev:hover,
-        .sub-banner-carousel .carousel-control-next:hover {
-            background: rgba(0, 0, 0, 0.5);
-        }
-
-    .sub-banner-carousel .carousel-control-prev-icon,
-    .sub-banner-carousel .carousel-control-next-icon {
-        background-size: 50%;
-    }
-
-/* Sidebar Styles */
+/* =========================
+   📌 Sidebar
+   ========================= */
 .sidebar-section {
-    background: white;
+    background: #ffffff;
     padding: 20px;
     border-radius: 15px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
     border: 1px solid var(--border-color);
+    margin-bottom: 2rem;
 }
 
 .sidebar-title {
@@ -111,11 +88,8 @@ body {
     .list-group-item.active {
         background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
         color: white;
+        font-weight: 500;
     }
-
-        .list-group-item.active .list-group-link {
-            color: white;
-        }
 
 .list-group-link {
     text-decoration: none;
@@ -129,7 +103,9 @@ body {
         color: var(--primary-color);
     }
 
-/* Product Card Styles */
+/* =========================
+   🛒 Product Card
+   ========================= */
 .product-card {
     border: none;
     border-radius: 15px;
@@ -193,6 +169,7 @@ body {
     color: white;
     padding: 4px 10px;
     border-radius: 12px;
+    animation: pulse 2s ease-in-out infinite;
 }
 
 .stock-info {
@@ -229,7 +206,9 @@ body {
         transform: translateY(-2px);
     }
 
-/* Show More Button */
+/* =========================
+   ➕ Show More Button
+   ========================= */
 .btn-show-more {
     font-size: 1rem;
     font-weight: 500;
@@ -250,21 +229,122 @@ body {
 
     .btn-show-more i {
         margin-left: 8px;
+        transition: transform 0.3s ease;
     }
 
-/* Responsive */
+    .btn-show-more:hover i {
+        transform: translateY(3px);
+    }
+
+/* =========================
+   🔥 Discount Filter
+   ========================= */
+.discount-filter {
+    margin-bottom: 20px;
+}
+
+.big-checkbox {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+}
+
+    .big-checkbox:checked {
+        background-color: var(--danger-color);
+        border-color: var(--danger-color);
+    }
+
+.discount-filter label {
+    font-size: 1.1rem;
+    margin-left: 8px;
+    cursor: pointer;
+}
+
+/* =========================
+   💬 Chatbox
+   ========================= */
+#ai-chat-messages p {
+    margin: 5px 0;
+    padding: 5px 10px;
+    border-radius: 10px;
+}
+
+#ai-chat-messages .user-msg {
+    background-color: #DCF8C6;
+    align-self: flex-end;
+}
+
+#ai-chat-messages .ai-msg {
+    background-color: #f1f0f0;
+    align-self: flex-start;
+}
+
+/* =========================
+   ✨ Icon Hover Animations
+   ========================= */
+.list-group-link i,
+.product-card .card-title i,
+.price-container i,
+.stock-info i,
+.product-card .btn i {
+    transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.list-group-link:hover i {
+    transform: scale(1.2);
+    color: var(--primary-color);
+}
+
+.product-card:hover .card-title i,
+.product-card:hover .price-container i,
+.product-card:hover .stock-info i {
+    transform: scale(1.2);
+}
+
+.product-card .btn:hover i {
+    transform: rotate(360deg);
+}
+
+/* =========================
+   🌟 Animations
+   ========================= */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+    }
+
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+    }
+}
+.industry-icon {
+    color: #2563eb; /* xanh dương */
+}
+.stock-info {
+    background-color: #96D6FF; /* xanh paster */
+}
+/* =========================
+   📱 Responsive
+   ========================= */
 @media (max-width: 768px) {
-    .main-banner img {
-        max-height: 300px;
+    .banner-wrapper {
         height: auto;
     }
 
+        .banner-wrapper img {
+            max-height: 300px;
+            height: auto;
+        }
+
     .sub-banner-carousel .carousel-item img {
         height: 200px;
-    }
-
-    .sidebar-section {
-        margin-bottom: 2rem;
     }
 
     .product-card .card-img-top {

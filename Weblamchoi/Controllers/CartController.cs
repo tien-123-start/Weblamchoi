@@ -1,10 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using weblamchoi.Hubs;
 using weblamchoi.Models;
 using System.Security.Claims;
-using System.Threading.Tasks;
+using weblamchoi.Hubs; // namespace chứa NotificationHub
 
 namespace weblamchoi.Controllers
 {
@@ -52,7 +51,7 @@ namespace weblamchoi.Controllers
             return RedirectToAction("Index");
         }
 
-        public IActionResult Index(string voucherCode = null)
+        public async Task<IActionResult> IndexAsync(string voucherCode = null)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return RedirectToAction("Index", "Login");
@@ -86,6 +85,7 @@ namespace weblamchoi.Controllers
 
             decimal finalAmount = totalAmount - discount;
             if (finalAmount < 0) finalAmount = 0;
+            ViewBag.Categories = await _context.Categories.ToListAsync();
 
             ViewBag.TotalAmount = totalAmount;
             ViewBag.DiscountAmount = discount;
@@ -269,18 +269,27 @@ namespace weblamchoi.Controllers
 
             _context.Carts.RemoveRange(cartItems);
 
-            var noti = new Notification
+            var notification = new Notification
             {
-                Message = $"Đơn hàng mới #{order.OrderID} từ người dùng ID {userIdInt}",
-                Link = $"/Admin/Orders/Details/{order.OrderID}",
-                Type = "NewOrder",
+                Message = $"Khách hàng {order.User?.FullName ?? "Ẩn danh"} vừa đặt đơn hàng #{order.OrderID}",
+                Link = $"/Orders/Details/{order.OrderID}",
                 CreatedAt = DateTime.Now,
-                IsRead = false
+                IsRead = false,
+                Type = "Order",
+                OrderID = order.OrderID
             };
-            _context.Notifications.Add(noti);
+
+            _context.Notifications.Add(notification);
             await _context.SaveChangesAsync();
 
-            await _hubContext.Clients.Group("Admins").SendAsync("ReceiveOrderNotification", noti.Message, order.OrderID);
+            // Gửi realtime cho admin qua SignalR
+            await _hubContext.Clients.Group("Admins").SendAsync(
+                "ReceiveOrderNotification",
+                notification.Message,
+                notification.OrderID
+            );
+
+
             await _hubContext.Clients.User(userIdInt.ToString()).SendAsync("ReceiveCheckoutSuccess", "Thanh toán thành công!");
 
             TempData["Message"] = "Thanh toán thành công! Đơn hàng đã được lưu.";
@@ -329,19 +338,48 @@ namespace weblamchoi.Controllers
             var amountAfterDiscount = totalAmount - discountAmount;
             if (amountAfterDiscount < 0) amountAfterDiscount = 0;
 
-            var pendingNoti = new Notification
+            // 🔹 Tạo order ở trạng thái "Pending"
+            var order = new Order
             {
-                Message = $"Đơn hàng mới #{userIdInt} đang chờ thanh toán online",
-                Link = $"/Admin/Orders/Details/0",
+                UserID = userIdInt,
+                OrderDate = DateTime.Now,
+                Status = "Pending",
+                TotalAmount = amountAfterDiscount,
+                VoucherCode = voucherCode,
+                OrderDetails = cartItems.Select(c => new OrderDetail
+                {
+                    ProductID = c.ProductID,
+                    Quantity = c.Quantity,
+                    UnitPrice = c.Product.Price
+                }).ToList()
+            };
+
+            _context.Orders.Add(order);
+            await _context.SaveChangesAsync();
+
+            // 🔹 Tạo notification gắn với OrderID
+            var notification = new Notification
+            {
+                Message = $"Khách hàng {userIdInt} vừa tạo đơn hàng #{order.OrderID}, đang chờ thanh toán online",
+                Link = $"/Orders/Details/{order.OrderID}",
                 Type = "PendingOrder",
                 CreatedAt = DateTime.Now,
-                IsRead = false
+                IsRead = false,
+                OrderID = order.OrderID
             };
-            _context.Notifications.Add(pendingNoti);
-            await _context.SaveChangesAsync();
-            await _hubContext.Clients.Group("Admins").SendAsync("ReceiveOrderNotification", pendingNoti.Message, 0);
 
-            return RedirectToAction("CreatePayment", "Payment", new { amount = amountAfterDiscount, voucherCode = voucherCode });
+            _context.Notifications.Add(notification);
+            await _context.SaveChangesAsync();
+
+            // 🔹 Gửi real-time cho admin
+            await _hubContext.Clients.Group("Admins").SendAsync(
+                "ReceiveOrderNotification",
+                notification.Message,
+                order.OrderID
+            );
+
+            // 🔹 Chuyển sang tạo thanh toán VNPAY
+            return RedirectToAction("CreatePayment", "Payment", new { orderId = order.OrderID, amount = amountAfterDiscount, voucherCode });
         }
 
         [HttpPost]
@@ -387,4 +425,5 @@ namespace weblamchoi.Controllers
             return RedirectToAction("Index");
         }
     }
+  
 }

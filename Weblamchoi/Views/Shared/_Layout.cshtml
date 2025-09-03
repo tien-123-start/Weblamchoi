@@ -1,4 +1,7 @@
 ﻿@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+    var currentCategory = ViewContext.RouteData.Values["categoryId"]?.ToString();
     ViewData["Title"] = "Trang chủ";
 }
 
@@ -8,11 +11,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@ViewData["Title"] - Điện Máy Xanh</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/layouthome.css">
     @RenderSection("Styles", required: false)
-
 </head>
 <body>
     <div class="top-bar">
@@ -20,7 +22,7 @@
             <div class="hotline-info">
                 <div class="hotline-item">
                     <i class="bi bi-telephone-fill"></i>
-                    <span>Gọi mua: <a href="tel:1900232461" class="hotline-link">1900 232 461 </a></span>
+                    <span>Gọi mua: <a href="tel:1900232461" class="hotline-link">1900 232 461</a></span>
                 </div>
                 <div class="hotline-item">
                     <i class="bi bi-headset"></i>
@@ -29,8 +31,6 @@
                 <div class="hotline-item">
                     <i class="bi bi-tools"></i>
                     <span>Bảo hành: <a href="tel:1900232465" class="hotline-link">1900 232 465</a></span>
-                </div>
-
                 </div>
             </div>
         </div>
@@ -43,7 +43,6 @@
                     <i class="bi bi-lightning-charge-fill"></i>
                     Điện Máy Xanh
                 </a>
-
                 <div class="search-container" style="position: relative;">
                     <form class="search-form" asp-controller="Home" asp-action="Index" method="get">
                         <input type="text" id="searchInput" class="search-input" name="keyword"
@@ -54,7 +53,6 @@
                     </form>
                     <ul id="suggestions" class="list-group position-absolute w-100"></ul>
                 </div>
-
                 <div class="location-selector">
                     <i class="bi bi-geo-alt-fill"></i>
                     <select class="location-select" onchange="onProvinceChange(this)">
@@ -68,7 +66,6 @@
                         }
                     </select>
                 </div>
-
                 <div class="user-actions">
                     @if (User.Identity != null && User.Identity.IsAuthenticated)
                     {
@@ -104,40 +101,21 @@
     <nav class="main-nav">
         <div class="container">
             <ul class="nav-list">
-                <li class="nav-item">
+                <li class="nav-item @(currentController == "Home" && currentAction == "Index" && currentCategory == null ? "active" : "")">
                     <a href="/Home/Index">Trang chủ</a>
                 </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
-                       data-bs-toggle="dropdown" aria-expanded="false">
-                        Danh mục
-                    </a>
-                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                        @if (ViewBag.Categories != null)
-                        {
-                            foreach (var c in ViewBag.Categories as List<weblamchoi.Models.Category>)
-                            {
-                                <li>
-                                    <a class="dropdown-item" asp-action="Index" asp-route-categoryId="@c.CategoryID">
-                                        @c.CategoryName
-                                    </a>
-                                </li>
-                            }
-                        }
-                    </ul>
-                </li>
-
-                <li class="nav-item">
+                
+                <li class="nav-item @(currentAction == "About" ? "active" : "")">
                     <a href="/Home/About">Giới thiệu</a>
                 </li>
-                <li class="nav-item">
-                    <a href="/Contact/Index">Liên hệ</a>
+                <li class="nav-item @(currentController == "Contact" ? "active" : "")">
+                    <a asp-controller="Contact" asp-action="Index">Liên hệ</a>
                 </li>
                 <li class="nav-item">
                     <a href="#">Khuyến mãi</a>
                 </li>
                 <li class="nav-item">
-                    <a href="#">Tin tức</a>
+                    <a href="/Home/Tintuc">Tin tức</a>
                 </li>
             </ul>
         </div>
@@ -181,8 +159,6 @@
             </div>
         </div>
     </section>
-
-
 
     <section class="features-section">
         <div class="container">
@@ -274,10 +250,17 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            // ========== Gợi ý tìm kiếm ==========
+            // Kiểm tra sự kiện click trên dropdown
+            const dropdownToggle = document.querySelector('.dropdown-toggle');
+            if (dropdownToggle) {
+                dropdownToggle.addEventListener('click', function () {
+                    console.log('Dropdown clicked');
+                });
+            }
+
+            // Gợi ý tìm kiếm
             const searchInput = document.getElementById("searchInput");
             const suggestions = document.getElementById("suggestions");
-
             if (searchInput) {
                 searchInput.addEventListener("keyup", function () {
                     let keyword = searchInput.value;
@@ -285,7 +268,6 @@
                         suggestions.innerHTML = "";
                         return;
                     }
-
                     fetch(`/Home/SearchSuggest?keyword=${encodeURIComponent(keyword)}`)
                         .then(res => res.json())
                         .then(data => {
@@ -303,58 +285,9 @@
                         });
                 });
             }
-
-            // ========== User Actions ==========
-            const userActions = document.getElementById('userActions');
-            const authButtons = document.getElementById('authButtons');
-
-            @if (User.Identity != null && User.Identity.IsAuthenticated)
-            {
-                    <text>
-                        if (userActions) {
-                            userActions.innerHTML = `
-                                <div class="user-dropdown">
-                                    <div class="user-info">
-                                        <div class="user-avatar">@User.Identity.Name.Substring(0, 1).ToUpper()</div>
-                                        <span class="user-name">@User.Identity.Name</span>
-                                    </div>
-                                    <div class="user-dropdown-menu">
-                                        <a class="user-dropdown-item" href="/Users/Profile">Hồ sơ</a>
-                                        <form asp-controller="Login" asp-action="Logout" method="post">
-                                            <button type="submit" class="logout-btn">Đăng xuất</button>
-                                        </form>
-                                    </div>
-                                </div>
-                                <a href="/Cart/Index" class="cart-icon" title="Giỏ hàng">
-                                    <i class="bi bi-cart3"></i>
-                                    @(ViewBag.CartCount > 0 ? $"<span class='cart-badge'>{ViewBag.CartCount}</span>" : "")
-                                `;
-                        }
-                    </text>
-            }
-            else
-            {
-                    <text>
-                        if (userActions) {
-                            userActions.innerHTML = `
-                                <a href="/Login/Index" class="btn-primary-custom">Đăng nhập</a>
-                                <a href="/Cart/Index" class="cart-icon" title="Giỏ hàng">
-                                    <i class="bi bi-cart3"></i>
-                                </a>
-                            `;
-                        }
-                        if (authButtons) {
-                            authButtons.innerHTML = `
-                                <a href="/Login/Index" class="login-btn">Đăng nhập</a>
-                            `;
-                        }
-                    </text>
-            }
         });
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
     @RenderSection("Scripts", required: false)
 
 </body>

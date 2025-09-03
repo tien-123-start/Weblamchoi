@@ -1,0 +1,208 @@
+﻿@{
+    ViewData["Title"] = "Tin tức";
+}
+
+<style>
+    body {
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        min-height: 100vh;
+        margin: 0;
+        padding: 20px;
+    }
+
+    .news-container {
+        max-width: 1000px;
+        margin: 40px auto;
+        padding: 0 15px;
+    }
+
+    .news-title {
+        color: #1f2937;
+        font-size: 2.5rem;
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 40px;
+        position: relative;
+        animation: fadeIn 0.5s ease-out;
+    }
+
+        .news-title::after {
+            content: '';
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 2px;
+        }
+
+    .news-item {
+        display: flex;
+        gap: 30px;
+        margin-bottom: 40px;
+        padding: 20px;
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        animation: slideUp 0.5s ease-out;
+    }
+
+        .news-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+    keyframes slideUp {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+
+    keyframes fadeIn {
+        from
+
+    {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+
+    }
+
+    .news-item img {
+        width: 300px;
+        height: 180px;
+        object-fit: cover;
+        border-radius: 12px;
+        transition: transform 0.3s ease;
+    }
+
+        .news-item img:hover {
+            transform: scale(1.05);
+        }
+
+    .news-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+        .news-content h4 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+
+            .news-content h4 a {
+                color: #1e40af;
+                text-decoration: none;
+                transition: color 0.3s ease;
+            }
+
+                .news-content h4 a:hover {
+                    color: #dc2626;
+                }
+
+    .news-date {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin: 8px 0;
+        font-style: italic;
+    }
+
+    .news-desc {
+        font-size: 1rem;
+        color: #4b5563;
+        line-height: 1.6;
+        margin-bottom: 0;
+    }
+
+    media (max-width: 768px) {
+        .news-item
+
+    {
+        flex-direction: column;
+        padding: 15px;
+    }
+
+    .news-item img {
+        width: 100%;
+        height: 200px;
+    }
+
+    .news-title {
+        font-size: 2rem;
+    }
+
+    }
+
+    media (max-width: 576px) {
+        .news-container
+
+    {
+        margin: 20px auto;
+        padding: 0 10px;
+    }
+
+    .news-title {
+        font-size: 1.8rem;
+    }
+
+    .news-content h4 {
+        font-size: 1.3rem;
+    }
+
+    .news-item img {
+        height: 160px;
+    }
+
+    }
+</style>
+
+<div class="news-container">
+    <h2 class="news-title">📰 Tin tức mới nhất</h2>
+
+    <div class="news-item">
+        <img src="https://picsum.photos/300/180?random=1" alt="tin 1" />
+        <div class="news-content">
+            <h4><a href="https://vnexpress.net/" target="_blank">Bài báo số 1</a></h4>
+            <p class="news-date">01/09/2025</p>
+            <p class="news-desc">Mô tả ngắn về bài báo số 1. Đây chỉ là dữ liệu mẫu để minh họa giao diện.</p>
+        </div>
+    </div>
+
+    <div class="news-item">
+        <img src="https://picsum.photos/300/180?random=2" alt="tin 2" />
+        <div class="news-content">
+            <h4><a href="https://vnexpress.net/" target="_blank">Bài báo số 2</a></h4>
+            <p class="news-date">31/08/2025</p>
+            <p class="news-desc">Mô tả ngắn về bài báo số 2. Đây chỉ là dữ liệu mẫu để minh họa giao diện.</p>
+        </div>
+    </div>
+
+    <div class="news-item">
+        <img src="https://picsum.photos/300/180?random=3" alt="tin 3" />
+        <div class="news-content">
+            <h4><a href="https://vnexpress.net/" target="_blank">Bài báo số 3</a></h4>
+            <p class="news-date">30/08/2025</p>
+            <p class="news-desc">Mô tả ngắn về bài báo số 3. Đây chỉ là dữ liệu mẫu để minh họa giao diện.</p>
+        </div>
+    </div>
+</div>

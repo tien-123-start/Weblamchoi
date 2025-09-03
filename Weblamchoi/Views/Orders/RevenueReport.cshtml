@@ -1,112 +1,116 @@
-﻿@{
-    var revenueByDay = ViewBag.RevenueByDay as List<weblamchoi.Models.RevenueReport>;
-    var revenueByMonth = ViewBag.RevenueByMonth as List<weblamchoi.Models.RevenueReport>;
+﻿@model dynamic
+@{
+    ViewData["Title"] = "Báo cáo doanh thu";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
+<link rel="stylesheet" href="~/css/admin.css" />
 
-<h1 class="text-center fw-bold">Báo cáo doanh thu</h1>
-<p class="text-center text-muted">Thống kê doanh thu theo ngày và tháng dựa trên dữ liệu thực</p>
+<div class="container">
+    <h1>Báo cáo doanh thu</h1>
+    <p>Xem doanh thu theo ngày, tháng hoặc năm</p>
 
-<!-- Bảng doanh thu theo ngày -->
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Ngày</th>
-            <th>Doanh thu</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in revenueByDay)
-        {
+    <!-- Filter Form -->
+    <form asp-action="RevenueReport" method="get" class="mb-4">
+        <div class="row">
+            <div class="col-md-3">
+                <label for="startDate">Từ ngày</label>
+                <input type="date" name="startDate" class="form-control" value="@ViewBag.StartDate" />
+            </div>
+            <div class="col-md-3">
+                <label for="endDate">Đến ngày</label>
+                <input type="date" name="endDate" class="form-control" value="@ViewBag.EndDate" />
+            </div>
+            <div class="col-md-3">
+                <label for="groupBy">Nhóm theo</label>
+                <select name="groupBy" class="form-control">
+                    <option value="day" selected="@(ViewBag.GroupBy == "day")">Ngày</option>
+                    <option value="month" selected="@(ViewBag.GroupBy == "month")">Tháng</option>
+                    <option value="year" selected="@(ViewBag.GroupBy == "year")">Năm</option>
+                </select>
+            </div>
+            <div class="col-md-3 align-self-end">
+                <button type="submit" class="btn btn-primary">Lọc</button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Revenue Table -->
+    <h3>Doanh thu theo @(ViewBag.GroupBy == "year" ? "năm" : ViewBag.GroupBy == "month" ? "tháng" : "ngày")</h3>
+    <table class="table table-bordered">
+        <thead>
             <tr>
-                <td>@item.Date.ToString("dd/MM/yyyy")</td>
-                <td>@item.TotalRevenue.ToString("C")</td>
+                <th>@(ViewBag.GroupBy == "year" ? "Năm" : ViewBag.GroupBy == "month" ? "Tháng" : "Ngày")</th>
+                <th>Doanh thu (VNĐ)</th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var item in ViewBag.RevenueData)
+            {
+                <tr>
+                    <td>
+                        @if (ViewBag.GroupBy == "year")
+                        {
+                            @item.Date.Year
+                        }
+                        else if (ViewBag.GroupBy == "month")
+                        {
+                            @item.Date.ToString("MM/yyyy")
+                        }
+                        else
+                        {
+                            @item.Date.ToString("dd/MM/yyyy")
+                        }
+                    </td>
+                    <td>@item.TotalRevenue.ToString("N0")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
 
-<!-- Bảng doanh thu theo tháng -->
-<table class="table table-bordered mt-4">
-    <thead>
-        <tr>
-            <th>Tháng</th>
-            <th>Doanh thu</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in revenueByMonth)
-        {
-            <tr>
-                <td>@item.Date.ToString("MM/yyyy")</td>
-                <td>@item.TotalRevenue.ToString("C")</td>
-            </tr>
-        }
-    </tbody>
-</table>
-<a asp-controller="AdminDashboard" asp-action="Index" class="btn btn-secondary mt-3">Quay trở lại Dashboard</a>
+    <!-- Chart Section -->
+    <h3>Biểu đồ doanh thu</h3>
+    <canvas id="revenueChart"></canvas>
+    <a asp-controller="AdminDashboard" asp-action="Index" class="btn btn-secondary mt-3">Quay trở lại Dashboard</a>
 
-<!-- Biểu đồ -->
-<div class="row">
-    <div class="col-md-6">
-        <canvas id="revenueDayChart"></canvas>
-    </div>
-    <div class="col-md-6">
-        <canvas id="revenueMonthChart"></canvas>
-    </div>
 </div>
 
-<script>
-    var revenueByDay = @Html.Raw(Json.Serialize(revenueByDay));
-    var revenueByMonth = @Html.Raw(Json.Serialize(revenueByMonth));
-
-    // Biểu đồ doanh thu theo ngày
-    var dayCtx = document.getElementById('revenueDayChart').getContext('2d');
-    new Chart(dayCtx, {
-        type: 'line',
-        data: {
-            labels: revenueByDay.map(r => r.Date),
-            datasets: [{
-                label: 'Doanh thu theo ngày',
-                data: revenueByDay.map(r => r.TotalRevenue),
-                borderColor: 'blue',
-                borderWidth: 2
-            }]
-        }
-    });
-
-    // Biểu đồ doanh thu theo tháng
-    var monthCtx = document.getElementById('revenueMonthChart').getContext('2d');
-    new Chart(monthCtx, {
-        type: 'bar',
-        data: {
-            labels: revenueByMonth.map(r => r.Date),
-            datasets: [{
-                label: 'Doanh thu theo tháng',
-                data: revenueByMonth.map(r => r.TotalRevenue),
-                backgroundColor: 'green'
-            }]
-        }
-    });
-</script>
-<canvas id="revenueChart"></canvas>
-<script>
-    fetch('/api/orders/revenue')
-        .then(response => response.json())
-        .then(data => {
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const revenueData = @Html.Raw(Json.Serialize(ViewBag.RevenueData));
+            const labels = revenueData.map(item => {
+                const date = new Date(item.Date);
+                return '@ViewBag.GroupBy' === 'year' ? date.getFullYear() :
+                       '@ViewBag.GroupBy' === 'month' ? date.toLocaleString('vi-VN', { month: 'long', year: 'numeric' }) :
+                       date.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            });
             const ctx = document.getElementById('revenueChart').getContext('2d');
             new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: data.map(r => r.Date),
+                    labels: labels,
                     datasets: [{
-                        label: 'Doanh thu từ đơn hàng hoàn tất',
-                        data: data.map(r => r.TotalRevenue),
-                        borderColor: 'green',
-                        borderWidth: 2
+                        label: 'Doanh thu (VNĐ)',
+                        data: revenueData.map(item => item.TotalRevenue),
+                        borderColor: '#007bff',
+                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                        fill: true
                     }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: { display: true, text: '@(ViewBag.GroupBy == "year" ? "Năm" : ViewBag.GroupBy == "month" ? "Tháng" : "Ngày")' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Doanh thu (VNĐ)' },
+                            beginAtZero: true
+                        }
+                    }
                 }
             });
         });
-</script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </script>
+}

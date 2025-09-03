@@ -90,20 +90,27 @@
                                         @foreach (var item in order.OrderDetails ?? Enumerable.Empty<weblamchoi.Models.OrderDetail>())
                                         {
                                             var productName = item.Product?.ProductName ?? "Sản phẩm không xác định";
+                                            bool alreadyReviewed = ((List<int>)ViewBag.ReviewedProductIds).Contains(item.ProductID);
+
                                             <li>
                                                 @productName - SL: @item.Quantity
-                                                @if (order.Status == "Thành công")
+                                                @if (order.Status == "Thành công" && !alreadyReviewed)
                                                 {
                                                     <a href="@Url.Action("Details", "Products", new { id = item.ProductID })" class="btn btn-sm btn-outline-primary ms-2">
                                                         Bình luận
                                                     </a>
                                                 }
+                                                else if (alreadyReviewed)
+                                                {
+                                                    <span class="text-success ms-2">Đã bình luận</span>
+                                                }
                                             </li>
                                         }
+
                                     </ul>
                                 </td>
                                 <td>
-                                    @if (order.Status == "Chờ xử lý")
+                                    @if (order.Status == "Chờ xử lý" || order.Status == "Chờ thanh toán")
                                     {
                                         <form asp-controller="Users" asp-action="CancelOrder" method="post" onsubmit="return confirm('Bạn có chắc muốn hủy đơn hàng này?');">
                                             @Html.AntiForgeryToken()

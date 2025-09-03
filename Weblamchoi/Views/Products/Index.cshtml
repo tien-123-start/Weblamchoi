@@ -3,6 +3,14 @@
 @{
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
 
 <h2>Danh sách sản phẩm</h2>
 <a asp-action="Create" class="btn btn-success">Thêm mới</a>
@@ -10,6 +18,7 @@
 <table class="table table-bordered mt-3">
     <thead>
         <tr>
+            <th>Mã SP</th>
             <th>Tên SP</th>
             <th>Danh mục</th>
             <th>Hãng SX</th>
@@ -25,6 +34,7 @@
         @foreach (var item in Model)
         {
             <tr>
+                <td>@(item.ProductID)</td>
                 <td>@(item.ProductName ?? "Không có tên")</td>
                 <td>@(item.Category?.CategoryName ?? "Không có")</td>
                 <td>@(item.Manufacturer?.ManufacturerName ?? "Không có")</td>
@@ -95,8 +105,6 @@
                         <small>Từ: @(item.StartDate?.ToString("dd/MM/yyyy") ?? "Không xác định")</small>
                         <br />
                         <small>Đến: @(item.EndDate?.ToString("dd/MM/yyyy") ?? "Không xác định")</small>
-
-                        @* ✅ Thêm cảnh báo hết hạn *@
                         @if (item.EndDate.HasValue && item.EndDate.Value < DateTime.Now)
                         {
                             <br />
@@ -108,22 +116,80 @@
                         <span>Không có</span>
                     }
                 </td>
-
                 <td>
                     <a asp-action="Edit" asp-route-id="@item.ProductID" class="btn btn-warning btn-sm">Sửa</a>
                     <a asp-action="Discount" asp-route-id="@item.ProductID" class="btn btn-info btn-sm ms-1">Giảm giá</a>
-                    <form asp-action="Delete" asp-route-id="@item.ProductID" method="post" onsubmit="return confirm('Bạn có chắc chắn xoá?');" style="display:inline">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-danger btn-sm ms-1">Xoá</button>
-                    </form>
+                    <button class="btn btn-danger btn-sm"
+                            data-bs-toggle="modal"
+                            data-bs-target="#deleteModal"
+                            data-id="@item.ProductID"
+                            data-name="@item.ProductName">
+                        Xóa
+                    </button>
                 </td>
             </tr>
         }
     </tbody>
 </table>
 
+<!-- Modal Xác nhận xóa -->
+<div class="modal fade" id="deleteModal"
+     tabindex="-1"
+     aria-labelledby="deleteModalLabel"
+     aria-hidden="true"
+     data-bs-backdrop="false"
+     data-bs-keyboard="false">
+    <!-- không đóng khi bấm Esc -->
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body">
+                Bạn có chắc chắn muốn xóa sản phẩm: <strong id="productName"></strong> ?
+            </div>
+            <div class="modal-footer">
+                <form id="deleteForm" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-danger">Xóa</button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
 <a asp-controller="AdminDashboard" asp-action="Index" class="btn btn-secondary mt-3">Quay trở lại Dashboard</a>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+
+    <style>
+        .modal-backdrop {
+            z-index: 1040 !important;
+        }
+
+        .modal {
+            z-index: 1060 !important;
+        }
+
+        .modal-content {
+            pointer-events: auto !important;
+        }
+    </style>
+
+    <script>
+                var deleteModal = document.getElementById('deleteModal');
+        deleteModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var productId = button.getAttribute('data-id');
+            var productName = button.getAttribute('data-name');
+
+            document.getElementById('productName').textContent = productName;
+            var form = document.getElementById('deleteForm');
+            form.action = '/Admin/Products/DeleteConfirmed/' + productId;
+        });
+
+    </script>
 }

@@ -22,20 +22,22 @@
         <!-- Hình ảnh sản phẩm -->
         <div class="product-image">
             <img id="mainImage" src="@Model.ImageURL" alt="@Model.ProductName" />
-            @if (Model.Thumbnails != null && Model.Thumbnails.Any())
-            {
-                <div class="thumbnails">
+            <div class="thumbnails">
+                <!-- Add main image as a thumbnail -->
+                <img src="@Model.ImageURL" alt="Main Image" class="thumbnail-img" onclick="updateMainImage(this)" />
+                @if (Model.Thumbnails != null && Model.Thumbnails.Any())
+                {
                     @foreach (var thumb in Model.Thumbnails)
                     {
                         var thumbPath = thumb.ThumbnailURL.StartsWith("/") ? Url.Content(thumb.ThumbnailURL) : Url.Content("/" + thumb.ThumbnailURL);
                         <img src="@thumbPath" alt="Thumbnail" class="thumbnail-img" onclick="updateMainImage(this)" />
                     }
-                </div>
-            }
-            else
-            {
-                <p>Chưa có ảnh nhỏ.</p>
-            }
+                }
+                else
+                {
+                    <p>Chưa có ảnh nhỏ.</p>
+                }
+            </div>
         </div>
 
         <!-- Thông tin sản phẩm -->
@@ -164,6 +166,7 @@
         {
             <p>Chưa có đánh giá nào.</p>
         }
+
         @if (canComment)
         {
             <hr>
@@ -190,9 +193,13 @@
         }
         else
         {
-            <p>Vui lòng <a href="/Login/Index">đăng nhập và mua sản phẩm</a> để gửi bình luận.</p>
+            <div class="alert alert-warning mt-3">
+                <strong>Thông báo:</strong> Bạn đã bình luận cho sản phẩm này rồi.
+                Nếu muốn tiếp tục bình luận, vui lòng mua sản phẩm thêm lần nữa.
+            </div>
         }
     </div>
+
 
     <!-- Sản phẩm liên quan -->
     <div class="related-products">

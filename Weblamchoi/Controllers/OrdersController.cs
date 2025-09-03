@@ -1,22 +1,31 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using weblamchoi.Models;
-using Microsoft.AspNetCore.SignalR;
 using weblamchoi.Hubs;
 
-namespace weblamchoi.Areas.Admin.Controllers
+namespace weblamchoi.Controllers
 {
+    [Authorize(Roles = "Admin")]
+    [Route("Orders")]
     public class OrdersController : Controller
     {
         private readonly DienLanhDbContext _context;
         private readonly IHubContext<NotificationHub> _hubContext;
+        private readonly ILogger<OrdersController> _logger;
 
-        public OrdersController(DienLanhDbContext context, IHubContext<NotificationHub> hubContext)
+        public OrdersController(
+            DienLanhDbContext context,
+            IHubContext<NotificationHub> hubContext,
+            ILogger<OrdersController> logger)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        [HttpGet]
         public async Task<IActionResult> Index()
         {
             var orders = await _context.Orders
@@ -29,8 +38,15 @@ namespace weblamchoi.Areas.Admin.Controllers
             return View(orders);
         }
 
+        [HttpGet("Details/{id}")]
         public async Task<IActionResult> Details(int id)
         {
+            if (id <= 0)
+            {
+                _logger.LogWarning($"Invalid order ID received: {id}");
+                return BadRequest("Mã đơn hàng không hợp lệ.");
+            }
+
             var order = await _context.Orders
                 .Include(o => o.User)
                 .Include(o => o.Shipping)
@@ -40,153 +56,156 @@ namespace weblamchoi.Areas.Admin.Controllers
                 .FirstOrDefaultAsync(o => o.OrderID == id);
 
             if (order == null)
-                return NotFound();
+            {
+                _logger.LogWarning($"Order not found for ID: {id}");
+                return NotFound($"Không tìm thấy đơn hàng với ID = {id}");
+            }
 
             return View(order);
         }
 
-        [HttpPost]
-        public async Task<IActionResult> UpdateStatus(int orderId, string newStatus)
+        [HttpPost("UpdateStatus")]
+        public async Task<IActionResult> UpdateStatus(int orderId, string newStatus, int userId)
         {
+            if (orderId <= 0)
+            {
+                TempData["ErrorMessage"] = "Mã đơn hàng không hợp lệ.";
+                return RedirectToAction("Index");
+            }
+
             var order = await _context.Orders
+                .Include(o => o.User)
                 .Include(o => o.OrderDetails)
                     .ThenInclude(od => od.Product)
                 .FirstOrDefaultAsync(o => o.OrderID == orderId);
 
-            if (order == null) return NotFound();
+            if (order == null)
+            {
+                return NotFound();
+            }
 
             string previousStatus = order.Status;
 
-            // Kiểm tra nếu trạng thái hiện tại là "Thành công" hoặc "Đã hủy"
             if (previousStatus == "Thành công" || previousStatus == "Đã hủy")
             {
                 TempData["ErrorMessage"] = "Không thể cập nhật trạng thái đơn hàng đã Thành công hoặc Đã hủy.";
                 return RedirectToAction("Details", new { id = orderId });
             }
 
-            // Bắt đầu giao dịch
             using var transaction = await _context.Database.BeginTransactionAsync();
-
             try
             {
-                // Cập nhật trạng thái đơn hàng
                 order.Status = newStatus;
 
-                // Chỉ xử lý khi trạng thái đổi từ khác sang "Thành công"
                 if (previousStatus != "Thành công" && newStatus == "Thành công")
                 {
-                    // Trừ số lượng sản phẩm trong kho
-                    foreach (var orderDetail in order.OrderDetails)
+                    foreach (var od in order.OrderDetails)
                     {
-                        var product = orderDetail.Product;
-                        if (product != null)
-                        {
-                            if (product.Quantity < orderDetail.Quantity)
-                            {
-                                await transaction.RollbackAsync();
-                                return BadRequest($"Sản phẩm {product.ProductName} không đủ số lượng trong kho.");
-                            }
-                            product.Quantity -= orderDetail.Quantity;
-                        }
-                        else
+                        var product = od.Product;
+                        if (product == null || product.Quantity < od.Quantity)
                         {
                             await transaction.RollbackAsync();
-                            return BadRequest($"Sản phẩm trong chi tiết đơn hàng {orderDetail.OrderDetailID} không tồn tại.");
+                            return BadRequest($"Sản phẩm {od.Product?.ProductName ?? "?"} không đủ số lượng trong kho.");
                         }
+                        product.Quantity -= od.Quantity;
                     }
 
-                    // Ghi nhận doanh thu
-                    var revenueRecord = new RevenueReport
+                    _context.RevenueReports.Add(new RevenueReport
                     {
                         Date = order.OrderDate.Date,
                         TotalRevenue = order.TotalAmount ?? 0m
-                    };
-                    _context.RevenueReports.Add(revenueRecord);
+                    });
                 }
 
-                // Lưu các thay đổi vào cơ sở dữ liệu
+                _context.Orders.Update(order);
                 await _context.SaveChangesAsync();
-
-                // Gửi thông báo SignalR
-                var notification = new Notification
-                {
-                    Message = $"Order ID {orderId} status updated to {newStatus}",
-                    Link = $"/Admin/Orders/Details/{orderId}",
-                    Type = "OrderStatus",
-                    CreatedAt = DateTime.Now
-                };
-                _context.Notifications.Add(notification);
-                await _context.SaveChangesAsync();
-                await _hubContext.Clients.Group("Admins").SendAsync("ReceiveOrderNotification", notification.Message, orderId);
-
-                // Commit giao dịch
                 await transaction.CommitAsync();
 
-                // Ghi log
-                Console.WriteLine($"Trạng thái cũ: {previousStatus}, trạng thái mới: {newStatus}");
-
-                // Thêm thông báo thành công vào TempData
                 TempData["SuccessMessage"] = $"Cập nhật trạng thái đơn hàng {orderId} thành {newStatus} thành công!";
             }
             catch (Exception ex)
             {
-                // Rollback giao dịch nếu có lỗi
                 await transaction.RollbackAsync();
-                Console.WriteLine($"Lỗi khi cập nhật trạng thái: {ex.Message}");
+                _logger.LogError(ex, $"Error updating order status for Order ID: {orderId}");
                 TempData["ErrorMessage"] = $"Lỗi khi cập nhật trạng thái đơn hàng: {ex.Message}";
             }
 
             return RedirectToAction("Details", new { id = orderId });
         }
 
-        [Route("api/orders/revenue")]
-        [HttpGet]
-        public IActionResult GetRevenueReport()
+        [HttpGet("RevenueReport")]
+        public async Task<IActionResult> RevenueReport(DateTime? startDate, DateTime? endDate, string groupBy = "day")
         {
-            var revenueData = _context.Orders
-                .Where(o => o.Status == "Thành công")
-                .GroupBy(o => o.OrderDate.Date)
-                .Select(g => new
-                {
-                    Date = g.Key,
-                    TotalRevenue = g.Sum(o => o.TotalAmount ?? 0m)
-                })
-                .ToList();
+            endDate = endDate?.Date ?? DateTime.Today;
+            startDate = startDate?.Date ?? endDate.Value.AddDays(-30);
 
-            return Ok(revenueData);
-        }
-
-        public async Task<IActionResult> RevenueReport()
-        {
-            var revenueDataByDay = await _context.Orders
-                .GroupBy(o => o.OrderDate.Date)
-                .Select(g => new RevenueReport
-                {
-                    Date = g.Key,
-                    TotalRevenue = g.Sum(o => o.TotalAmount ?? 0m)
-                })
+            var orders = await _context.Orders
+                .Where(o => o.Status == "Thành công" && o.OrderDate.Date >= startDate && o.OrderDate.Date <= endDate)
                 .ToListAsync();
 
-            var revenueDataByMonth = await _context.Orders
+            // --- Dữ liệu theo groupBy người dùng chọn ---
+            List<RevenueReport> revenueData = groupBy.ToLower() switch
+            {
+                "year" => orders
+                    .GroupBy(o => o.OrderDate.Year)
+                    .Select(g => new RevenueReport
+                    {
+                        Date = new DateTime(g.Key, 1, 1),
+                        TotalRevenue = g.Sum(o => o.TotalAmount ?? 0m)
+                    })
+                    .OrderBy(x => x.Date).ToList(),
+
+                "month" => orders
+                    .GroupBy(o => new { o.OrderDate.Year, o.OrderDate.Month })
+                    .Select(g => new RevenueReport
+                    {
+                        Date = new DateTime(g.Key.Year, g.Key.Month, 1),
+                        TotalRevenue = g.Sum(o => o.TotalAmount ?? 0m)
+                    })
+                    .OrderBy(x => x.Date).ToList(),
+
+                _ => orders
+                    .GroupBy(o => o.OrderDate.Date)
+                    .Select(g => new RevenueReport
+                    {
+                        Date = g.Key,
+                        TotalRevenue = g.Sum(o => o.TotalAmount ?? 0m)
+                    })
+                    .OrderBy(x => x.Date).ToList()
+            };
+
+            // --- Dữ liệu cố định theo tháng ---
+            var revenueDataByMonth = orders
                 .GroupBy(o => new { o.OrderDate.Year, o.OrderDate.Month })
                 .Select(g => new RevenueReport
                 {
                     Date = new DateTime(g.Key.Year, g.Key.Month, 1),
                     TotalRevenue = g.Sum(o => o.TotalAmount ?? 0m)
                 })
-                .ToListAsync();
+                .OrderBy(x => x.Date)
+                .ToList();
 
-            ViewBag.RevenueByDay = revenueDataByDay;
+            // --- Dữ liệu cố định theo năm ---
+            var revenueDataByYear = orders
+                .GroupBy(o => o.OrderDate.Year)
+                .Select(g => new RevenueReport
+                {
+                    Date = new DateTime(g.Key, 1, 1),
+                    TotalRevenue = g.Sum(o => o.TotalAmount ?? 0m)
+                })
+                .OrderBy(x => x.Date)
+                .ToList();
+
+            // --- Truyền ra View ---
+            ViewBag.RevenueData = revenueData;       // dữ liệu theo groupBy
             ViewBag.RevenueByMonth = revenueDataByMonth;
+            ViewBag.RevenueByYear = revenueDataByYear;
+            ViewBag.StartDate = startDate.Value.ToString("yyyy-MM-dd");
+            ViewBag.EndDate = endDate.Value.ToString("yyyy-MM-dd");
+            ViewBag.GroupBy = groupBy;
 
             return View();
         }
 
-        private int ExtractOrderId(string link)
-        {
-            if (string.IsNullOrEmpty(link)) return 0;
-            var parts = link.Split('/');
-            return int.TryParse(parts.Last(), out int id) ? id : 0;
-        }
     }
 }

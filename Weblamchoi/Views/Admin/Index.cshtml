@@ -1,4 +1,8 @@
 ﻿@model IEnumerable<Admin>
+@{
+    ViewData["Title"] = "Quản lý ADMIN";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
 
 <h2>Danh sách Admin</h2>
 <a asp-action="Create" class="btn btn-success">Thêm mới</a>

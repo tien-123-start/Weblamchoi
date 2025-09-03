@@ -19,8 +19,8 @@ namespace weblamchoi.Services
             var fromEmail = smtpSection["Email"];
             var password = smtpSection["Password"];
             var host = smtpSection["Host"];
-            var port = int.Parse(smtpSection["Port"]);
-            var enableSsl = bool.Parse(smtpSection["EnableSsl"]);
+            var port = int.Parse(smtpSection["Port"]!);
+            var enableSsl = bool.Parse(smtpSection["EnableSsl"]!);
 
             var message = new MailMessage(fromEmail, toEmail, subject, body)
             {

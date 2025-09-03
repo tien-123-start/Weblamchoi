@@ -2,32 +2,22 @@
     ViewData["Title"] = "Đăng nhập";
 }
 <link rel="stylesheet" href="/css/login.css">
+
 <div class="container d-flex justify-content-center align-items-center" style="min-height: 100vh;">
     <div class="card shadow-lg p-4 rounded" style="width: 100%; max-width: 400px; animation: fadeIn 0.6s;">
         <h3 class="text-center mb-4 text-primary">Đăng nhập tài khoản</h3>
 
-        <!-- Sửa asp-action thành Login -->
+        <!-- FORM đăng nhập bằng username/password -->
         <form asp-action="Login" method="post" autocomplete="off">
             <div class="form-floating mb-3">
                 <input name="username" class="form-control" id="username" placeholder="Tài khoản" required />
-                <label for="username">Tài khoản </label>
+                <label for="username">Tài khoản</label>
             </div>
 
             <div class="form-floating mb-3">
                 <input name="password" class="form-control" id="password" type="password" placeholder="Mật khẩu" required />
                 <label for="password">Mật khẩu</label>
             </div>
-
-            <!-- BỎ phần select role, role phải xác định trong Controller -->
-            @* 
-            <div class="form-floating mb-3">
-                <select name="role" class="form-select" id="role">
-                    <option value="user">Người dùng</option>
-                    <option value="admin">Quản trị viên</option>
-                </select>
-                <label for="role">Loại tài khoản</label>
-            </div>
-            *@
 
             <button type="submit" class="btn btn-primary w-100 py-2">Đăng nhập</button>
 
@@ -37,9 +27,18 @@
             }
 
             <div class="text-center mt-3">
-                <small>Chưa có tài khoản? <a asp-action="Register" class="text-decoration-underline">Đăng ký ngay</a></small>
+                <small>
+                    Chưa có tài khoản?
+                    <a asp-action="Register" class="text-decoration-underline">Đăng ký ngay</a>
+                </small>
+                <br />
+                <small>
+                    <a asp-controller="LoginMailServices" asp-action="Index" class="btn btn-outline-primary mt-2 w-100">
+                        Đăng nhập bằng email/OTP
+                    </a>
+                </small>
             </div>
-        </form>
-    </div>
-</div>
 
+        </form>
+
+</div>

@@ -15,7 +15,11 @@ namespace weblamchoi.Controllers
         {
             _context = context;
         }
-
+        [HttpGet]
+        public IActionResult Chat()
+        {
+            return View();
+        }
         // GET: /Home/Index?manufacturerId=1&categoryId=2
         public async Task<IActionResult> Index(string keyword, int? manufacturerId, int? categoryId)
         {
@@ -83,6 +87,10 @@ namespace weblamchoi.Controllers
                 .ToList();
 
             return Json(suggestions);
+        }
+        public IActionResult Tintuc()
+        {
+            return View();
         }
 
     }

@@ -1,55 +1,83 @@
 ﻿using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using weblamchoi.Hubs;
 using weblamchoi.Models;
-using weblamchoi.Services; // Add namespace for ProductService
+using weblamchoi.Services;
+using Weblamchoi.Hubs;
+using Polly;
+using Polly.Extensions.Http;
+using System.Net.Http.Headers;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add services
 builder.Services.AddControllersWithViews();
 
+// Authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
-        options.LoginPath = "/Login/Index"; // Trang login
-        options.AccessDeniedPath = "/Account/AccessDenied"; // Trang lỗi quyền
+        options.LoginPath = "/Login/Index";
+        options.AccessDeniedPath = "/Account/AccessDenied";
+        options.ExpireTimeSpan = TimeSpan.FromHours(1); // Tùy chỉnh thời gian hết hạn cookie
     });
 builder.Services.AddAuthorization();
 
-// Add DbContext with SQL Server
+// DbContext
 builder.Services.AddDbContext<DienLanhDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Add ProductService
-builder.Services.AddScoped<ProductService>(); // Register ProductService with Scoped lifetime
+// Scoped services
+builder.Services.AddScoped<ProductService>();
+builder.Services.AddScoped<IContactService, ContactService>();
+builder.Services.AddScoped<EmailService>();
 
-// Add SignalR for real-time notifications
-builder.Services.AddSignalR();
-
-// Add MVC controllers and views
-builder.Services.AddControllersWithViews();
-
-// Add session support
-builder.Services.AddSession(options =>
+// HttpClient with Polly retry policy for Grok API
+builder.Services.AddHttpClient("xAIClient", client =>
 {
-    options.IdleTimeout = TimeSpan.FromMinutes(30); // Set session timeout
-    options.Cookie.HttpOnly = true; // Enhance security
-    options.Cookie.IsEssential = true; // Make session cookie essential
+    client.BaseAddress = new Uri(builder.Configuration["xAI:BaseUrl"] ?? "https://api.x.ai/v1");
+    client.DefaultRequestHeaders.Authorization =
+        new AuthenticationHeaderValue("Bearer", builder.Configuration["xAI:ApiKey"]);
+    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+})
+.AddPolicyHandler(HttpPolicyExtensions
+    .HandleTransientHttpError()
+    .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+    .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))));
+
+builder.Services.AddHttpClient(); // Giữ lại để sử dụng cho các dịch vụ khác
+
+// SignalR
+builder.Services.AddSignalR(options =>
+{
+    options.MaximumReceiveMessageSize = 102400; // Tăng giới hạn kích thước tin nhắn nếu cần
 });
 
-// Build the application
+// Session
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
+// Logging
+builder.Services.AddLogging(logging =>
+{
+    logging.AddConsole();
+    logging.AddDebug();
+    logging.SetMinimumLevel(LogLevel.Information);
+});
+
 var app = builder.Build();
 
-// Ensure database is created and migrations are applied
+// Apply migrations
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<DienLanhDbContext>();
-    dbContext.Database.Migrate(); // Apply migrations and create DB if not exists
+    dbContext.Database.Migrate();
 }
 
-// Configure the HTTP request pipeline
+// Middleware
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -57,27 +85,28 @@ if (!app.Environment.IsDevelopment())
 }
 else
 {
-    app.UseDeveloperExceptionPage(); // Show detailed errors in development
+    app.UseDeveloperExceptionPage();
 }
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
-app.UseSession(); // Enable session middleware
+app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapControllers(); // Hỗ trợ endpoint /AI/GetResponse
 
-// Map default route
+// Routes
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-// Map admin-specific route
 app.MapControllerRoute(
     name: "admin",
     pattern: "Admin/{controller=AdminDashboard}/{action=Index}/{id?}");
 
-// Map SignalR hub for notifications
-app.MapHub<NotificationHub>("/notificationHub"); // Ensure NotificationHub exists
+// SignalR hubs
+app.MapHub<ChatHub>("/chathub");
+app.MapHub<weblamchoi.Hubs.NotificationHub>("/notificationHub");
 
 app.Run();

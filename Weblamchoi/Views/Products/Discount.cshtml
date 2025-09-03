@@ -2,38 +2,74 @@
 @{
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
-<h2>Giảm giá sản phẩm</h2>
 
-<form asp-action="Discount" method="post">
+<h2>Giảm giá sản phẩm theo %</h2>
+
+<form asp-action="DiscountByPercent" method="post" class="mt-3">
     <input type="hidden" asp-for="ProductID" />
+    <input type="hidden" asp-for="Price" id="PriceHidden" />
 
-    <div class="form-group">
-        <label>Tên sản phẩm</label>
+    <div class="mb-3">
+        <label class="form-label">Tên sản phẩm</label>
         <input class="form-control" value="@Model.ProductName" disabled />
     </div>
 
-    <div class="form-group">
-        <label>Giá gốc</label>
-        <input asp-for="OriginalPrice" class="form-control" readonly />
+    <div class="mb-3">
+        <label class="form-label">Giá gốc</label>
+        <input class="form-control" value="@(Model.OriginalPrice != null ? string.Format("{0:N0} ₫", Model.OriginalPrice) : "")" readonly />
     </div>
 
-    <div class="form-group">
-        <label>Giá đã giảm</label>
-        <input asp-for="Price" class="form-control" />
-        <span asp-validation-for="Price" class="text-danger"></span>
+    <div class="mb-3">
+        <label class="form-label">Giảm giá (%)</label>
+        <input type="number" class="form-control" id="DiscountPercent" value="0" min="0" max="100" step="0.01" />
+       
     </div>
-    <!-- Thêm hiển thị mức giảm giá -->
-    <div class="form-group">
-        <label>Mức giảm giá</label>
-        <input class="form-control"
-               value="@(Model.OriginalPrice != null ? ((100 - ((double)Model.Price / (double)Model.OriginalPrice * 100)).ToString("N0")) + "%" : "Chưa có giá gốc")" readonly />
+
+    <div class="mb-3">
+        <label class="form-label">Giá sau giảm</label>
+        <input type="text" class="form-control" id="PriceDisplay"
+               value="@(Model.Price.ToString("F2"))" readonly />
     </div>
 
 
-    <button type="submit" class="btn btn-primary mt-3">Lưu giảm giá</button>
-    <a asp-action="Index" class="btn btn-secondary mt-3">Quay lại</a>
+   
+
+    <button type="submit" class="btn btn-primary">Lưu giảm giá</button>
+    <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
 </form>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        const discountInput = document.getElementById('DiscountPercent');
+        const priceDisplay = document.getElementById('PriceDisplay');
+        const priceHidden = document.getElementById('PriceHidden');
+        const originalPrice = @Model.OriginalPrice ?? 0;
+        const currentPrice = @Model.Price ?? @Model.OriginalPrice ?? 0;
+
+        function updatePrice() {
+            let percent = parseFloat(discountInput.value) || 0;
+            if (percent < 0) percent = 0;
+            if (percent > 100) percent = 100;
+
+            const newPrice = originalPrice * (1 - percent / 100);
+            priceDisplay.value = newPrice.toFixed(2);
+            priceHidden.value = newPrice.toFixed(2);
+        }
+
+        // Khi load page, tính % giảm dựa trên giá hiện tại
+        window.addEventListener('load', () => {
+            let initialPercent = 0;
+            if (originalPrice > 0) {
+                initialPercent = 100 - (currentPrice / originalPrice * 100);
+                if (initialPercent < 0) initialPercent = 0;
+                if (initialPercent > 100) initialPercent = 100;
+            }
+            discountInput.value = initialPercent.toFixed(2);
+            updatePrice();
+        });
+
+        discountInput.addEventListener('input', updatePrice);
+    </script>
+
 }

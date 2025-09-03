@@ -1,11 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using weblamchoi.Models;
-using System.Linq;
 
 public class LoginController : Controller
 {
@@ -18,7 +19,12 @@ public class LoginController : Controller
 
     // Hiển thị form đăng nhập
     [HttpGet]
-    public IActionResult Index() => View();
+    public async Task<IActionResult> IndexAsync()
+    {
+        ViewBag.Categories = await _context.Categories.ToListAsync();
+
+        return View();
+    }
 
     // Xử lý đăng nhập
     [HttpPost]
@@ -66,7 +72,11 @@ public class LoginController : Controller
     }
 
     [HttpGet]
-    public IActionResult Register() => View();
+    public async Task<IActionResult> RegisterAsync()
+    {
+        ViewBag.Categories = await _context.Categories.ToListAsync();
+        return View();
+    }
 
     [HttpPost]
     public async Task<IActionResult> Register(RegisterViewModel model)

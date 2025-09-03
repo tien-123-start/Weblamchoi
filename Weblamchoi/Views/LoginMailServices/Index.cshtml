@@ -1,0 +1,29 @@
+﻿@{
+    ViewData["Title"] = "Đăng nhập bằng Email";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <h3 class="text-center mb-4">Đăng nhập bằng Email</h3>
+
+            @if (ViewBag.Error != null)
+            {
+                <div class="alert alert-danger">@ViewBag.Error</div>
+            }
+
+            @if (ViewBag.Message != null)
+            {
+                <div class="alert alert-success">@ViewBag.Message</div>
+            }
+
+            <form asp-action="LoginWithEmail" method="post">
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email:</label>
+                    <input type="email" class="form-control" id="email" name="email" placeholder="Nhập email của bạn" required />
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Gửi OTP</button>
+            </form>
+        </div>
+    </div>
+</div>

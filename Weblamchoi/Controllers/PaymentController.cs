@@ -1,15 +1,10 @@
 ﻿using DienLanhWeb.VNPAY;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Claims;
-using weblamchoi.Hubs;
 using weblamchoi.Models;
-
+using weblamchoi.Hubs;
 namespace DienLanhWeb.Controllers
 {
     public class PaymentController : Controller
@@ -63,7 +58,7 @@ namespace DienLanhWeb.Controllers
             {
                 UserID = userId,
                 TotalAmount = finalAmount,
-                Status = "Chờ thanh toán",
+                Status = "Tạm giữ", // trạng thái tạm thời
                 OrderDate = DateTime.Now,
                 VoucherCode = voucherCode,
                 OrderDetails = cartItems.Select(c => new OrderDetail
@@ -73,9 +68,9 @@ namespace DienLanhWeb.Controllers
                     UnitPrice = c.Price ?? c.Product?.Price ?? 0m
                 }).ToList()
             };
-
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
+
 
             // ✅ Sau khi SaveChanges, OrderID mới được sinh ra
             string txnRef = order.OrderID.ToString();

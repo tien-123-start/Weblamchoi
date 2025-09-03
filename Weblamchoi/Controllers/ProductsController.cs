@@ -1,11 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using weblamchoi.Models;
-using weblamchoi.Services;
 using System.IO;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using weblamchoi.Models;
+using weblamchoi.Services;
 
 namespace weblamchoi.Controllers.Admin
 {
@@ -59,27 +60,96 @@ namespace weblamchoi.Controllers.Admin
 
             ViewBag.RelatedProducts = relatedProducts;
             ViewBag.Reviews = reviews;
+            ViewBag.Categories = await _context.Categories.ToListAsync();
 
-            int? userId = HttpContext.Session.GetInt32("UserID");
+            // 🔑 Kiểm tra login
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            bool canComment = false;
 
-            bool canComment = userId.HasValue && await _context.Orders
-                .Where(o => o.UserID == userId && o.Status == "Thành công")
-                .SelectMany(o => o.OrderDetails)
-                .AnyAsync(od => od.ProductID == id);
+            if (userId != null)
+            {
+                int userIdInt = int.Parse(userId);
+
+                // Kiểm tra user đã mua sản phẩm thành công chưa
+                bool hasPurchased = await _context.Orders
+                    .Where(o => o.UserID == userIdInt && o.Status == "Thành công")
+                    .SelectMany(o => o.OrderDetails)
+                    .AnyAsync(od => od.ProductID == id);
+
+                if (hasPurchased)
+                {
+                    // Kiểm tra user đã bình luận sản phẩm này chưa
+                    bool alreadyReviewed = await _context.Reviews
+                        .AnyAsync(r => r.ProductID == id && r.UserID == userIdInt);
+
+                    canComment = !alreadyReviewed; // chỉ cho comment nếu chưa comment trước đó
+                }
+            }
 
             ViewBag.CanComment = canComment;
+
             // Kiểm tra BonusProduct còn hạn không
             if (product.BonusProduct != null)
             {
                 if (product.BonusProduct.EndDate.HasValue &&
                     product.BonusProduct.EndDate.Value < DateTime.Now)
                 {
-                    // Hết hạn thì ẩn luôn
-                    product.BonusProduct = null;
+                    product.BonusProduct = null; // hết hạn thì ẩn luôn
                 }
             }
+
             return View(product);
         }
+
+        [HttpPost]
+        public async Task<IActionResult> AddReview(int productId, string comment, int rating)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return RedirectToAction("Login", "Users");
+
+            int userIdInt = int.Parse(userId);
+
+            // 🔍 Đếm số đơn hàng thành công mà user đã mua sản phẩm này
+            int purchaseCount = await _context.Orders
+                .Where(o => o.UserID == userIdInt && o.Status == "Thành công")
+                .SelectMany(o => o.OrderDetails)
+                .CountAsync(od => od.ProductID == productId);
+
+            if (purchaseCount == 0)
+            {
+                TempData["Error"] = "Bạn cần mua sản phẩm này trước khi bình luận.";
+                return RedirectToAction("Details", new { id = productId });
+            }
+
+            // 🔍 Đếm số bình luận đã có
+            int reviewCount = await _context.Reviews
+                .CountAsync(r => r.ProductID == productId && r.UserID == userIdInt);
+
+            // Nếu số bình luận >= số lần mua -> không cho bình luận thêm
+            if (reviewCount >= purchaseCount)
+            {
+                TempData["Error"] = "Bạn đã bình luận đủ số lần theo số lần mua.";
+                return RedirectToAction("Details", new { id = productId });
+            }
+
+            // ✅ Nếu còn quyền thì thêm bình luận
+            var review = new Review
+            {
+                ProductID = productId,
+                UserID = userIdInt,
+                Comment = comment,
+                Rating = rating,
+                ReviewDate = DateTime.Now
+            };
+
+            _context.Reviews.Add(review);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Bình luận thành công!";
+            return RedirectToAction("Details", new { id = productId });
+        }
+
+
 
         public async Task<IActionResult> Create()
         {
@@ -342,7 +412,7 @@ namespace weblamchoi.Controllers.Admin
             return RedirectToAction(nameof(Index));
         }
 
-        [HttpPost]
+        [HttpGet]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
         {
@@ -355,6 +425,14 @@ namespace weblamchoi.Controllers.Admin
 
                 if (product == null)
                     return NotFound();
+
+                // 🔍 Kiểm tra sản phẩm có trong OrderDetails không
+                bool isInOrder = await _context.OrderDetails.AnyAsync(od => od.ProductID == id);
+                if (isInOrder)
+                {
+                    TempData["Error"] = "Sản phẩm này đã được khách hàng mua, không thể xóa. Vui lòng đổi sang trạng thái ngừng bán.";
+                    return RedirectToAction(nameof(Index));
+                }
 
                 if (product.UsedAsBonusBy != null && product.UsedAsBonusBy.Any())
                 {
@@ -384,6 +462,7 @@ namespace weblamchoi.Controllers.Admin
                 return RedirectToAction(nameof(Index));
             }
         }
+
 
         [HttpPost]
         public async Task<IActionResult> DeleteThumbnail(int thumbnailId)
@@ -440,6 +519,17 @@ namespace weblamchoi.Controllers.Admin
                 return View(product);
             }
         }
+        [HttpPost]
+        public IActionResult DiscountByPercent(int ProductID, double Price)
+        {
+            var product = _context.Products.FirstOrDefault(p => p.ProductID == ProductID);
+            if (product == null) return NotFound();
+
+            product.Price = (decimal)Price;
+            _context.SaveChanges();
+
+            return RedirectToAction("Index");
+        }
 
         private async Task<string> SaveMainImageFile(IFormFile file)
         {
@@ -478,6 +568,41 @@ namespace weblamchoi.Controllers.Admin
 
             await _context.SaveChangesAsync();
         }
+        private void SafeDeleteImage(Product product)
+        {
+            // Xử lý ảnh chính
+            if (!string.IsNullOrEmpty(product.ImageURL))
+            {
+                var fullPath = Path.Combine(_environment.WebRootPath, product.ImageURL.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString()));
+                if (System.IO.File.Exists(fullPath))
+                {
+                    System.IO.File.Delete(fullPath);
+                }
+                else
+                {
+                    // Nếu file không tồn tại thì clear luôn DB link
+                    product.ImageURL = null;
+                }
+            }
+
+            // Xử lý thumbnails
+            if (product.Thumbnails != null && product.Thumbnails.Any())
+            {
+                foreach (var thumb in product.Thumbnails.ToList())
+                {
+                    var thumbPath = Path.Combine(_environment.WebRootPath, thumb.ThumbnailURL.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString()));
+                    if (System.IO.File.Exists(thumbPath))
+                    {
+                        System.IO.File.Delete(thumbPath);
+                    }
+                    else
+                    {
+                        // Nếu file không còn thì xóa record thumbnail luôn
+                        _context.ProductThumbnails.Remove(thumb);
+                    }
+                }
+            }
+        }
 
         private bool IsImageFile(IFormFile file)
         {
@@ -491,5 +616,80 @@ namespace weblamchoi.Controllers.Admin
             if (System.IO.File.Exists(fullPath))
                 System.IO.File.Delete(fullPath);
         }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var product = await _context.Products
+                .Include(p => p.OrderDetails)
+                    .ThenInclude(od => od.Order)
+                .Include(p => p.Thumbnails)
+                .Include(p => p.UsedAsBonusBy)
+                .FirstOrDefaultAsync(p => p.ProductID == id);
+
+            if (product == null)
+            {
+                return NotFound();
+            }
+
+            // ❌ Nếu sản phẩm đang nằm trong giỏ hàng thì không cho xóa
+            bool existsInCart = await _context.Carts.AnyAsync(c => c.ProductID == product.ProductID);
+            if (existsInCart)
+            {
+                TempData["ErrorMessage"] = "❌ Không thể xóa sản phẩm vì vẫn còn trong giỏ hàng của khách.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Kiểm tra sản phẩm đã từng có đơn hàng chưa
+            bool hasOrders = product.OrderDetails != null && product.OrderDetails.Any();
+
+            if (hasOrders)
+            {
+                // Có đơn hàng liên quan -> kiểm tra trạng thái
+                bool hasActiveOrders = product.OrderDetails
+                    .Any(od => od.Order.Status != "Thành công" && od.Order.Status != "Đã hủy");
+
+                if (hasActiveOrders)
+                {
+                    TempData["ErrorMessage"] = "❌ Sản phẩm đã có người mua và còn đơn hàng chưa hoàn tất, không thể xóa!";
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+
+            try
+            {
+                // Nếu sản phẩm đang được gán làm Bonus cho sản phẩm khác thì gỡ ra
+                if (product.UsedAsBonusBy != null && product.UsedAsBonusBy.Any())
+                {
+                    foreach (var p in product.UsedAsBonusBy)
+                    {
+                        p.BonusProductID = null;
+                    }
+                }
+
+                // Xóa ảnh (hàm riêng xử lý nếu ảnh không tồn tại thì bỏ qua)
+                SafeDeleteImage(product);
+
+                _context.Products.Remove(product);
+                await _context.SaveChangesAsync();
+
+                // Thông báo khác nhau
+                if (!hasOrders)
+                {
+                    TempData["SuccessMessage"] = "✅ Xóa sản phẩm thành công (sản phẩm chưa từng có người mua).";
+                }
+                else
+                {
+                    TempData["SuccessMessage"] = "✅ Xóa sản phẩm thành công (sản phẩm đã từng có người mua nhưng tất cả đơn hàng đã hoàn tất/hủy).";
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = "❌ Lỗi khi xóa: " + (ex.InnerException?.Message ?? ex.Message);
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
     }
 }

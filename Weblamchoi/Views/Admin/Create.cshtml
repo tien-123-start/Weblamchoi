@@ -1,5 +1,8 @@
 ﻿@model Admin
-
+@{
+    ViewData["Title"] = "Create Admin";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
 <h2>Thêm tài khoản Admin</h2>
 
 <form asp-action="Create" method="post">
@@ -20,4 +23,6 @@
         <input asp-for="Email" class="form-control" />
     </div>
     <button type="submit" class="btn btn-success mt-2">Lưu</button>
+    <a asp-controller="Admin" asp-action="Index" class="btn btn-secondary mt-3">Quay trở lại </a>
+
 </form>

@@ -2,14 +2,14 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using weblamchoi.Models;
-using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
+
 namespace weblamchoi.Controllers.Admin
 {
-
+    [Authorize] // Bắt buộc phải login cho toàn bộ controller
     public class UsersController : Controller
     {
         private readonly DienLanhDbContext _context;
@@ -24,10 +24,8 @@ namespace weblamchoi.Controllers.Admin
             return View(await _context.Users.ToListAsync());
         }
 
-        public IActionResult Create()
-        {
-            return View();
-        }
+        public IActionResult Create() => View();
+
         [HttpPost]
         public IActionResult Create(User user)
         {
@@ -49,12 +47,10 @@ namespace weblamchoi.Controllers.Admin
             return Convert.ToHexString(hash);
         }
 
-        [Authorize(Roles = "User")] // Bắt buộc phải login mới vào được
-
         public IActionResult Profile()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null) return RedirectToAction("Index", "Login");
+            if (string.IsNullOrEmpty(userId)) return RedirectToAction("Index", "Login");
 
             var user = _context.Users.Find(int.Parse(userId));
             if (user == null) return NotFound();
@@ -70,12 +66,12 @@ namespace weblamchoi.Controllers.Admin
 
             return View(model);
         }
+
         [HttpPost]
-        [Authorize(Roles = "User")]
         public IActionResult Profile(UserProfileViewModel model)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null || model.UserID != int.Parse(userId)) return Unauthorized();
+            if (string.IsNullOrEmpty(userId) || model.UserID != int.Parse(userId)) return Unauthorized();
 
             var user = _context.Users.Find(int.Parse(userId));
             if (user == null) return NotFound();
@@ -83,7 +79,7 @@ namespace weblamchoi.Controllers.Admin
             if (!ModelState.IsValid)
                 return View(model);
 
-            // Nếu đổi mật khẩu
+            // Đổi mật khẩu
             if (!string.IsNullOrEmpty(model.CurrentPassword) && !string.IsNullOrEmpty(model.NewPassword))
             {
                 var hash = HashPassword(model.CurrentPassword);
@@ -92,7 +88,6 @@ namespace weblamchoi.Controllers.Admin
                     ModelState.AddModelError("CurrentPassword", "Mật khẩu hiện tại không đúng.");
                     return View(model);
                 }
-
                 user.PasswordHash = HashPassword(model.NewPassword);
             }
 
@@ -104,9 +99,6 @@ namespace weblamchoi.Controllers.Admin
             ViewBag.Success = "Cập nhật thành công.";
             return View(model);
         }
-
-
-
 
         public async Task<IActionResult> Edit(int id)
         {
@@ -143,26 +135,34 @@ namespace weblamchoi.Controllers.Admin
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
-        [Authorize(Roles = "User")]
+
         public async Task<IActionResult> OrderHistory(string status)
         {
-            // Lấy UserID từ Claims (khi login bạn đã set ClaimTypes.NameIdentifier = UserID)
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null) return RedirectToAction("Index", "Login");
+            if (string.IsNullOrEmpty(userId)) return RedirectToAction("Index", "Login");
+
+            int userIdInt = int.Parse(userId);
 
             var query = _context.Orders
-                .Where(o => o.UserID == int.Parse(userId));
+                .Where(o => o.UserID == userIdInt);
+
+            // Chỉ hiển thị các đơn đã thanh toán hoặc đang giao hàng/hoàn tất
+            query = query.Where(o => o.Status != "Tạm giữ" && o.Status != "Chờ thanh toán" );
 
             if (!string.IsNullOrEmpty(status))
-            {
                 query = query.Where(o => o.Status == status);
-            }
 
             var orders = await query
                 .Include(o => o.OrderDetails)
                     .ThenInclude(od => od.Product)
                 .OrderByDescending(o => o.OrderDate)
                 .ToListAsync();
+
+            var reviewedProductIds = await _context.Reviews
+               .Where(r => r.UserID == userIdInt)
+               .Select(r => r.ProductID)
+               .ToListAsync();
+            ViewBag.ReviewedProductIds = reviewedProductIds;
 
             return View(orders);
         }
@@ -177,30 +177,22 @@ namespace weblamchoi.Controllers.Admin
                 .Include(o => o.Shipping)
                 .FirstOrDefault(o => o.OrderID == orderId);
 
-            if (order == null || order.Status != "Chờ xử lý")
-            {
+            if (order == null || !(order.Status == "Chờ xử lý" || order.Status == "Chờ thanh toán"))
                 return NotFound();
-            }
 
-            // Xóa các chi tiết đơn hàng
             if (order.OrderDetails != null)
                 _context.OrderDetails.RemoveRange(order.OrderDetails);
 
-            // Xóa payment nếu có
             if (order.Payment != null)
                 _context.Payments.Remove(order.Payment);
 
-            // Xóa shipping nếu có
             if (order.Shipping != null)
                 _context.Shippings.Remove(order.Shipping);
 
-            // Xóa đơn hàng
             _context.Orders.Remove(order);
-
             _context.SaveChanges();
 
             return RedirectToAction("OrderHistory");
         }
-
     }
 }

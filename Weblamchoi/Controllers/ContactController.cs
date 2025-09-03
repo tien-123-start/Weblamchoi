@@ -1,24 +1,28 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
-using weblamchoi.Models;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System.Threading.Tasks;
+using weblamchoi.Models;
+using weblamchoi.Services;
 
 namespace weblamchoi.Controllers
 {
     public class ContactController : Controller
     {
+        private readonly IContactService _contactService;
         private readonly DienLanhDbContext _context;
 
-        public ContactController(DienLanhDbContext context)
+        public ContactController(IContactService contactService, DienLanhDbContext context)
         {
+            _contactService = contactService;
             _context = context;
         }
 
         // GET: /Contact
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
+            ViewBag.Categories = await _context.Categories.ToListAsync();
             return View();
         }
 
@@ -29,12 +33,11 @@ namespace weblamchoi.Controllers
         {
             if (ModelState.IsValid)
             {
-                contact.SubmittedAt = DateTime.Now;
-                _context.Contacts.Add(contact);
-                await _context.SaveChangesAsync();
+                await _contactService.AddAsync(contact);
                 TempData["ContactMessage"] = "Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất có thể.";
                 return RedirectToAction("Index");
             }
+            ViewBag.Categories = await _context.Categories.ToListAsync();
 
             TempData["ContactError"] = "Vui lòng điền đầy đủ thông tin hợp lệ.";
             return View(contact);
@@ -43,26 +46,17 @@ namespace weblamchoi.Controllers
         // GET: /Contact/Admin
         public async Task<IActionResult> Admin()
         {
-            var contacts = await _context.Contacts
-                .OrderByDescending(c => c.SubmittedAt)
-                .ToListAsync();
+            var contacts = await _contactService.GetAllAsync();
             return View(contacts);
         }
 
         // GET: /Contact/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
-            var contact = await _context.Contacts
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (contact == null)
-            {
-                return NotFound();
-            }
+            var contact = await _contactService.GetByIdAsync(id.Value);
+            if (contact == null) return NotFound();
 
             return View(contact);
         }
@@ -70,17 +64,10 @@ namespace weblamchoi.Controllers
         // GET: /Contact/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
-            var contact = await _context.Contacts
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (contact == null)
-            {
-                return NotFound();
-            }
+            var contact = await _contactService.GetByIdAsync(id.Value);
+            if (contact == null) return NotFound();
 
             return View(contact);
         }
@@ -90,18 +77,10 @@ namespace weblamchoi.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var contact = await _context.Contacts.FindAsync(id);
-            if (contact != null)
-            {
-                _context.Contacts.Remove(contact);
-                await _context.SaveChangesAsync();
-                TempData["ContactMessage"] = "Đã xóa liên hệ thành công.";
-            }
-            else
-            {
-                TempData["ContactError"] = "Không tìm thấy liên hệ để xóa.";
-            }
+            await _contactService.DeleteAsync(id);
+            TempData["ContactMessage"] = "Đã xóa liên hệ thành công.";
             return RedirectToAction(nameof(Admin));
         }
     }
+
 }
