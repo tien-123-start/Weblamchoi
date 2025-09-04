@@ -11,7 +11,6 @@ using weblamchoi.Models;
 public class LoginController : Controller
 {
     private readonly DienLanhDbContext _context;
-
     public LoginController(DienLanhDbContext context)
     {
         _context = context;
@@ -82,8 +81,11 @@ public class LoginController : Controller
     public async Task<IActionResult> Register(RegisterViewModel model)
     {
         if (!ModelState.IsValid)
+        {
             return View(model);
+        }
 
+        // Kiểm tra email đã tồn tại trong DB
         if (_context.Users.Any(u => u.Email == model.Email))
         {
             ModelState.AddModelError("Email", "Email đã được sử dụng.");
@@ -102,12 +104,13 @@ public class LoginController : Controller
         };
 
         _context.Users.Add(user);
-        _context.SaveChanges();
+        await _context.SaveChangesAsync();
 
         await SignInUser(user.Email, "User", user.UserID.ToString());
 
         return RedirectToAction("Index", "Home");
     }
+
 
     // ================= HELPER =================
     private string HashPassword(string password)
