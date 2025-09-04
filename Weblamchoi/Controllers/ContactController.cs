@@ -5,6 +5,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using weblamchoi.Models;
 using weblamchoi.Services;
+using X.PagedList;
+using X.PagedList.Extensions;
 
 namespace weblamchoi.Controllers
 {
@@ -44,10 +46,19 @@ namespace weblamchoi.Controllers
         }
 
         // GET: /Contact/Admin
-        public async Task<IActionResult> Admin()
+        public async Task<IActionResult> Admin(int? page)
         {
+            int pageSize = 10; // số liên hệ mỗi trang
+            int pageNumber = page ?? 1;
+
             var contacts = await _contactService.GetAllAsync();
-            return View(contacts);
+
+            // Nếu không có CreatedAt, ta sắp xếp theo ContactID giảm dần
+            var pagedContacts = contacts
+                .OrderByDescending(c => c.Id)
+                .ToPagedList(pageNumber, pageSize);
+
+            return View(pagedContacts);
         }
 
         // GET: /Contact/Details/5

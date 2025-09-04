@@ -6,6 +6,8 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using weblamchoi.Models;
+using X.PagedList.Extensions;
+using X.PagedList; // Thư viện phân trang
 
 namespace weblamchoi.Controllers.Admin
 {
@@ -19,9 +21,16 @@ namespace weblamchoi.Controllers.Admin
             _context = context;
         }
 
-        public async Task<IActionResult> Index()
+        public IActionResult Index(int? page)
         {
-            return View(await _context.Users.ToListAsync());
+            int pageSize = 10;
+            int pageNumber = page ?? 1;
+
+            var users = _context.Users
+                .OrderBy(u => u.UserID) // sắp xếp cho ổn định
+                .ToPagedList(pageNumber, pageSize);
+
+            return View(users);
         }
 
         public IActionResult Create() => View();
@@ -208,7 +217,7 @@ namespace weblamchoi.Controllers.Admin
             return RedirectToAction(nameof(Index));
         }
 
-        public async Task<IActionResult> OrderHistory(string status)
+        public async Task<IActionResult> OrderHistory(string status, int? page)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return RedirectToAction("Index", "Login");
@@ -216,18 +225,24 @@ namespace weblamchoi.Controllers.Admin
             int userIdInt = int.Parse(userId);
 
             var query = _context.Orders
-                .Where(o => o.UserID == userIdInt);
-
-            query = query.Where(o => o.Status != "Tạm giữ" && o.Status != "Chờ thanh toán");
+                .Where(o => o.UserID == userIdInt)
+                .Where(o => o.Status != "Tạm giữ" && o.Status != "Chờ thanh toán");
 
             if (!string.IsNullOrEmpty(status))
                 query = query.Where(o => o.Status == status);
 
-            var orders = await query
+            int pageSize = 5;
+            int pageNumber = page ?? 1;
+
+            // Lấy data bằng EF Core async trước
+            var orderList = await query
                 .Include(o => o.OrderDetails)
                     .ThenInclude(od => od.Product)
                 .OrderByDescending(o => o.OrderDate)
                 .ToListAsync();
+
+            // Rồi phân trang
+            var orders = orderList.ToPagedList(pageNumber, pageSize);
 
             var reviewedProductIds = await _context.Reviews
                .Where(r => r.UserID == userIdInt)

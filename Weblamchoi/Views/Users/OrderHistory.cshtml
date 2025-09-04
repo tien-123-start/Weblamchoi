@@ -1,10 +1,65 @@
-﻿@model List<weblamchoi.Models.Order>
+﻿@model X.PagedList.IPagedList<weblamchoi.Models.Order>
+@using X.PagedList.Mvc.Core;
 
 @{
     ViewData["Title"] = "Lịch sử đơn hàng";
     var currentStatus = ViewContext.HttpContext.Request.Query["status"].ToString();
     string[] statuses = new[] { "Chờ xử lý", "Đã xác nhận", "Đang chuyển hàng", "Đang giao hàng", "Đã hủy", "Thành công" };
 }
+
+<style>
+    /* Button group styling */
+    .btn-group {
+        position: relative;
+        display: flex;
+        gap: 5px;
+        padding-bottom: 5px;
+    }
+
+        /* Button styling with smooth transition */
+        .btn-group .btn {
+            transition: all 0.3s ease;
+            border-radius: 5px;
+            z-index: 1;
+        }
+
+            /* Active button styling */
+            .btn-group .btn.active {
+                color: #fff;
+                background-color: #007bff;
+                border-color: #007bff;
+            }
+
+        /* Sliding underline effect */
+        .btn-group::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 3px;
+            background-color: #007bff;
+            transition: all 0.3s ease;
+        }
+
+        /* Move underline to active button */
+        .btn-group .btn.active::after {
+            width: 100%;
+        }
+
+    /* Content transition */
+    .table, .text-center.p-5.bg-light.rounded.border {
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    /* Content animation during update */
+    .content-updating {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+</style>
 
 <div class="row">
     <!-- Sidebar -->
@@ -18,6 +73,9 @@
                 <a href="/Users/Profile" class="list-group-item list-group-item-action">
                     <i class="bi bi-person-vcard"></i> Thông tin và số địa chỉ
                 </a>
+                <a href="/Users/ChangePassword" class="list-group-item list-group-item-action">
+                    <i class="bi bi-lock"></i> Đổi mật khẩu
+                </a>
             </div>
             <form method="post" asp-controller="Login" asp-action="Logout" class="mt-3">
                 <button type="submit" class="btn btn-outline-primary w-100">Đăng Xuất</button>
@@ -27,11 +85,11 @@
                 <p class="mb-1 fw-bold">Tổng điểm tích lũy: 0 điểm</p>
                 <p class="small">Tích & sử dụng điểm cho khách hàng thân thiết.</p>
                 <div class="text-center mb-2">
-                    <img src="/uploads/QR.png" alt="QR code" width="100" />
+                    <img src="/Uploads/QR.png" alt="QR code" width="100" />
                 </div>
                 <div class="d-flex justify-content-around">
-                    <img src="/uploads/Appstore.jpg" style="height:30px;" alt="App Store" />
-                    <img src="/uploads/gg play.jpg" style="height:30px;" alt="Google Play" />
+                    <img src="/Uploads/Appstore.jpg" style="height:30px;" alt="App Store" />
+                    <img src="/Uploads/gg play.jpg" style="height:30px;" alt="Google Play" />
                 </div>
             </div>
         </div>
@@ -106,7 +164,6 @@
                                                 }
                                             </li>
                                         }
-
                                     </ul>
                                 </td>
                                 <td>
@@ -123,6 +180,18 @@
                         }
                     </tbody>
                 </table>
+                <div class="d-flex justify-content-center mt-4">
+                    @Html.PagedListPager(
+                    Model,
+                                page => Url.Action("OrderHistory", new { page, status = ViewContext.HttpContext.Request.Query["status"].ToString() }),
+                                new PagedListRenderOptions
+                                {
+                                    LiElementClasses = new[] { "page-item" },
+                                    PageClasses = new[] { "page-link" },
+                                    UlElementClasses = new[] { "pagination" }
+                                })
+            </div>
+
             }
 
             <div class="mt-3">
@@ -131,3 +200,33 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $('.btn-group .btn').on('click', function (e) {
+                e.preventDefault();
+                $('.btn-group .btn').removeClass('active');
+                $(this).addClass('active');
+
+                $('.table, .text-center.p-5.bg-light.rounded.border').addClass('content-updating');
+
+                var url = $(this).attr('href');
+
+                $.ajax({
+                    url: url,
+                    method: 'GET',
+                    success: function (data) {
+                        $('.col-md-9 .bg-white.p-4.rounded.shadow-sm').html($(data).find('.col-md-9 .bg-white.p-4.rounded.shadow-sm').html());
+                        $('.table, .text-center.p-5.bg-light.rounded.border').removeClass('content-updating');
+                    },
+                    error: function () {
+                        alert('Không thể tải dữ liệu. Vui lòng thử lại.');
+                        $('.table, .text-center.p-5.bg-light.rounded.border').removeClass('content-updating');
+                    }
+                });
+            });
+        });
+    </script>
+}

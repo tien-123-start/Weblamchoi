@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Polly;
 using System.Security.Cryptography;
 using System.Text;
 using weblamchoi.Models;
+using X.PagedList;
 
 public class AdminController : Controller
 {
@@ -13,13 +15,25 @@ public class AdminController : Controller
         _context = context;
     }
 
-    public IActionResult Index()
+
+    public async Task<IActionResult> Index(int? page)
     {
-        var admins = _context.Admins.ToList();
-        return View(admins);
+        int pageSize = 10; // số admin mỗi trang
+        int pageNumber = page ?? 1;
+
+        var query = _context.Admins.OrderBy(a => a.AdminID);
+
+        var total = await query.CountAsync();
+        var items = await query.Skip((pageNumber - 1) * pageSize)
+                               .Take(pageSize)
+                               .ToListAsync();
+
+        var paged = new StaticPagedList<Admin>(items, pageNumber, pageSize, total);
+
+        return View(paged);
     }
 
-    public IActionResult Create()
+public IActionResult Create()
     {
         return View();
     }

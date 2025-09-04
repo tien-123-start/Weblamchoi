@@ -1,4 +1,5 @@
-﻿@model IEnumerable<weblamchoi.Models.Manufacturer>
+﻿@model X.PagedList.IPagedList<weblamchoi.Models.Manufacturer>
+@using X.PagedList.Mvc.Core
 @{
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
@@ -33,5 +34,18 @@
         }
     </tbody>
 </table>
-
+<div class="d-flex justify-content-center mt-3">
+    @Html.PagedListPager(
+        Model,
+        page => Url.Action("Index", new { page }),
+        new PagedListRenderOptions {
+            DisplayLinkToFirstPage = PagedListDisplayMode.Always,
+            DisplayLinkToLastPage = PagedListDisplayMode.Always,
+            DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+            DisplayLinkToNextPage = PagedListDisplayMode.Always,
+            MaximumPageNumbersToDisplay = 5,
+            LiElementClasses = new[] { "page-item" },
+            PageClasses = new[] { "page-link" }
+        })
+</div>
 <a asp-controller="AdminDashboard" asp-action="Index" class="btn btn-secondary">Về Dashboard</a>

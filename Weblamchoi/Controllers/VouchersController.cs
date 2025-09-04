@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using weblamchoi.Models;
 using Microsoft.EntityFrameworkCore;
+using weblamchoi.Models;
+using X.PagedList;
 
 namespace weblamchoi.Controllers
 {
@@ -14,11 +15,21 @@ namespace weblamchoi.Controllers
         }
 
         // GET: Vouchers
-        public IActionResult Index()
+        public async Task<IActionResult> Index(int? page)
         {
-            // Bỏ Include Product vì voucher không còn liên kết với sản phẩm
-            var vouchers = _context.Vouchers.ToList();
-            return View(vouchers);
+            int pageSize = 10; // số voucher mỗi trang
+            int pageNumber = page ?? 1;
+
+            var query = _context.Vouchers.OrderBy(v => v.Code);
+
+            var total = await query.CountAsync();
+            var items = await query.Skip((pageNumber - 1) * pageSize)
+                                   .Take(pageSize)
+                                   .ToListAsync();
+
+            var paged = new StaticPagedList<Voucher>(items, pageNumber, pageSize, total);
+
+            return View(paged);
         }
 
         // GET: Create

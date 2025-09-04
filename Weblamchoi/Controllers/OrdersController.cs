@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using weblamchoi.Models;
 using weblamchoi.Hubs;
+using X.PagedList.Extensions;
+using X.PagedList; // Thư viện phân trang
 
 namespace weblamchoi.Controllers
 {
@@ -26,16 +28,18 @@ namespace weblamchoi.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? page)
         {
-            var orders = await _context.Orders
+            int pageSize = 10; // số đơn hàng mỗi trang
+            int pageNumber = page ?? 1;
+
+            var orders = _context.Orders
                 .Include(o => o.User)
                 .Include(o => o.Shipping)
                 .Include(o => o.Payment)
-                .OrderByDescending(o => o.OrderDate)
-                .ToListAsync();
+                .OrderByDescending(o => o.OrderDate);
 
-            return View(orders);
+            return View(orders.ToPagedList(pageNumber, pageSize));
         }
 
         [HttpGet("Details/{id}")]

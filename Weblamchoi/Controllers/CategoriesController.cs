@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using weblamchoi.Models;
+using X.PagedList; // Thư viện phân trang
+using X.PagedList.Extensions;
 
 namespace weblamchoi.Controllers.Admin
 {
@@ -13,12 +15,21 @@ namespace weblamchoi.Controllers.Admin
             _context = context;
         }
 
-        public async Task<IActionResult> Index()
-        {
-            return View(await _context.Categories.ToListAsync());
-        }
 
-        public IActionResult Create()
+        public IActionResult Index(int? page)
+            {
+                int pageSize = 10; // số danh mục mỗi trang
+                int pageNumber = page ?? 1;
+
+                var categories = _context.Categories
+                    .OrderBy(c => c.CategoryID) // sắp xếp cho ổn định
+                    .ToPagedList(pageNumber, pageSize);
+
+                return View(categories);
+            }
+
+
+    public IActionResult Create()
         {
             return View();
         }

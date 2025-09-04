@@ -1,4 +1,5 @@
-﻿@model IEnumerable<weblamchoi.Models.Contact>
+﻿@model X.PagedList.IPagedList<weblamchoi.Models.Contact>
+@using X.PagedList.Mvc.Core
 
 @{
     ViewData["Title"] = "Quản lý Liên hệ";
@@ -196,6 +197,20 @@
             }
         </tbody>
     </table>
+    <div class="d-flex justify-content-center mt-3">
+    @Html.PagedListPager(
+        Model,
+        page => Url.Action("Admin", new { page }),
+        new PagedListRenderOptions {
+            DisplayLinkToFirstPage = PagedListDisplayMode.Always,
+            DisplayLinkToLastPage = PagedListDisplayMode.Always,
+            DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+            DisplayLinkToNextPage = PagedListDisplayMode.Always,
+            MaximumPageNumbersToDisplay = 5,
+            LiElementClasses = new[] { "page-item" },
+            PageClasses = new[] { "page-link" }
+        })
+</div>
 </div>
 
 @section Scripts {

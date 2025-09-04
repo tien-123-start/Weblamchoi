@@ -1,4 +1,5 @@
-﻿@model IEnumerable<weblamchoi.Models.Product>
+﻿@model X.PagedList.IPagedList<weblamchoi.Models.Product>
+@using X.PagedList.Mvc.Core
 @using weblamchoi.Models
 @{
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
@@ -131,6 +132,21 @@
         }
     </tbody>
 </table>
+<div class="d-flex justify-content-center mt-3">
+    @Html.PagedListPager(
+        Model,
+         page => Url.Action("Index", "Products", new { area = "Admin", page }),
+        new PagedListRenderOptions
+        {
+            DisplayLinkToFirstPage = PagedListDisplayMode.Always,
+            DisplayLinkToLastPage = PagedListDisplayMode.Always,
+            DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+            DisplayLinkToNextPage = PagedListDisplayMode.Always,
+            MaximumPageNumbersToDisplay = 5,
+            LiElementClasses = new[] { "page-item" },
+            PageClasses = new[] { "page-link" }
+        })
+</div>
 
 <!-- Modal Xác nhận xóa -->
 <div class="modal fade" id="deleteModal"

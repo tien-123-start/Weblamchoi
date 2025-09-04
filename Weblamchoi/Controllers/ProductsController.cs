@@ -7,6 +7,8 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using weblamchoi.Models;
 using weblamchoi.Services;
+using X.PagedList.Extensions;
+using X.PagedList; // Thư viện phân trang
 
 namespace weblamchoi.Controllers.Admin
 {
@@ -23,15 +25,19 @@ namespace weblamchoi.Controllers.Admin
             _productService = productService;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? page)
         {
+            int pageSize = 10;
+            int pageNumber = page ?? 1;
+
             var products = _context.Products
                 .Include(p => p.Category)
                 .Include(p => p.Manufacturer)
                 .Include(p => p.Thumbnails)
-                .Include(p => p.BonusProduct);
+                .Include(p => p.BonusProduct)
+                .OrderByDescending(p => p.ProductID);
 
-            return View(await products.ToListAsync());
+            return View(products.ToPagedList(pageNumber, pageSize));
         }
 
         [HttpGet]

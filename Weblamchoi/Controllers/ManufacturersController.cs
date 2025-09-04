@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using weblamchoi.Models;
+using X.PagedList;
 
 namespace weblamchoi.Controllers.Admin
 {
@@ -13,9 +14,21 @@ namespace weblamchoi.Controllers.Admin
             _context = context;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? page)
         {
-            return View(await _context.Manufacturers.ToListAsync());
+            int pageSize = 10; // số hãng SX mỗi trang
+            int pageNumber = page ?? 1;
+
+            var query = _context.Manufacturers.OrderBy(m => m.ManufacturerID);
+
+            var total = await query.CountAsync();
+            var items = await query.Skip((pageNumber - 1) * pageSize)
+                                   .Take(pageSize)
+                                   .ToListAsync();
+
+            var paged = new StaticPagedList<Manufacturer>(items, pageNumber, pageSize, total);
+
+            return View(paged);
         }
 
         public IActionResult Create()

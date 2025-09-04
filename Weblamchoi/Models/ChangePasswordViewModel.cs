@@ -9,9 +9,9 @@ namespace weblamchoi.Models
         [Required]
         [DataType(DataType.Password)]
         public string CurrentPassword { get; set; }
-
-        [Required]
-        [DataType(DataType.Password)]
+        [Required(ErrorMessage = "Mật khẩu mới không được để trống")]
+        [MinLength(6, ErrorMessage = "Mật khẩu phải có ít nhất 6 ký tự")]
+        [RegularExpression("^(?=.*[A-Za-z]).+$", ErrorMessage = "Mật khẩu phải chứa ít nhất 1 chữ cái")]
         public string NewPassword { get; set; }
 
         [Required]

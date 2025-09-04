@@ -1,4 +1,5 @@
-﻿@model IEnumerable<weblamchoi.Models.Order>
+﻿@model X.PagedList.IPagedList<weblamchoi.Models.Order>
+@using X.PagedList.Mvc.Core
 @{
     ViewData["Title"] = "Quản lý đơn hàng";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
@@ -35,3 +36,19 @@
     <a asp-controller="AdminDashboard" asp-action="Index" class="btn btn-secondary mt-3">Quay trở lại Dashboard</a>
 
 </table>
+<div class="d-flex justify-content-center mt-3">
+    @Html.PagedListPager(
+    Model,
+    page => Url.Action("Index", "Orders", new { area = "", page }),
+        new PagedListRenderOptions
+        {
+            DisplayLinkToFirstPage = PagedListDisplayMode.Always,
+            DisplayLinkToLastPage = PagedListDisplayMode.Always,
+            DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+            DisplayLinkToNextPage = PagedListDisplayMode.Always,
+            MaximumPageNumbersToDisplay = 5,
+            LiElementClasses = new[] { "page-item" },
+            PageClasses = new[] { "page-link" }
+        })
+</div>
+ 

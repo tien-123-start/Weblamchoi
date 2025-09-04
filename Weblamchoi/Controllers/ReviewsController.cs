@@ -1,8 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using weblamchoi.Models;
-using System.Threading.Tasks;
 using System.Linq;
+using System.Threading.Tasks;
+using weblamchoi.Models;
+using X.PagedList;
 
 namespace weblamchoi.Controllers.Admin
 {
@@ -16,14 +17,23 @@ namespace weblamchoi.Controllers.Admin
         }
 
         // Danh sách sản phẩm để chọn xem bình luận
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? page)
         {
-            var products = await _context.Products
-                .Include(p => p.Reviews) // Thêm Include để lấy số lượng bình luận
-                .OrderBy(p => p.ProductName)
-                .ToListAsync();
+            int pageSize = 10; // số sản phẩm mỗi trang
+            int pageNumber = page ?? 1;
 
-            return View(products);
+            var query = _context.Products
+                .Include(p => p.Reviews)
+                .OrderBy(p => p.ProductName);
+
+            var total = await query.CountAsync();
+            var items = await query.Skip((pageNumber - 1) * pageSize)
+                                   .Take(pageSize)
+                                   .ToListAsync();
+
+            var paged = new StaticPagedList<Product>(items, pageNumber, pageSize, total);
+
+            return View(paged);
         }
 
         // Xem bình luận của sản phẩm theo id sản phẩm
