@@ -8,6 +8,7 @@ namespace weblamchoi.Models
         public int UserID { get; set; }
         public string FullName { get; set; }
         public string Email { get; set; }
+        public int Points { get; set; } = 0; // Điểm tích lũy
 
         public string PasswordHash { get; set; }
         [NotMapped]

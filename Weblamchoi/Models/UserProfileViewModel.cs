@@ -15,5 +15,7 @@ namespace weblamchoi.Models
 
         public string? Phone { get; set; } // Nullable, as it's optional
         public string? Address { get; set; } // Nullable, as it's optional
+        public int Points { get; set; }
+
     }
 }

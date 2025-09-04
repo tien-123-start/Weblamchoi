@@ -84,8 +84,11 @@ namespace weblamchoi.Controllers.Admin
                 FullName = user.FullName,
                 Email = user.Email, // Lấy giá trị Email từ database
                 Phone = user.Phone,
-                Address = user.Address
+                Address = user.Address,
+                Points = user.Points // ✅ thêm ở đây
+
             };
+            ViewBag.UserPoints = user.Points; // <-- thêm dòng này
 
             return View(model);
         }
@@ -139,6 +142,7 @@ namespace weblamchoi.Controllers.Admin
                 Console.WriteLine($"SaveChanges failed: {ex.Message}");
                 ViewBag.Error = $"Lỗi khi lưu dữ liệu: {ex.Message}";
             }
+            ViewBag.UserPoints = user.Points; // <-- thêm dòng này
 
             return View(model);
         }
@@ -146,6 +150,11 @@ namespace weblamchoi.Controllers.Admin
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return RedirectToAction("Index", "Login");
+
+            var user = _context.Users.FirstOrDefault(u => u.UserID == int.Parse(userId));
+            if (user == null) return NotFound();
+
+            ViewBag.UserPoints = user.Points; // gửi điểm tích lũy tới view
 
             var model = new ChangePasswordViewModel
             {
@@ -164,6 +173,8 @@ namespace weblamchoi.Controllers.Admin
             var user = _context.Users.FirstOrDefault(u => u.UserID == int.Parse(userId));
             if (user == null) return NotFound();
 
+            ViewBag.UserPoints = user.Points; // gửi lại điểm sau khi submit
+
             if (!ModelState.IsValid)
                 return View(model);
 
@@ -180,6 +191,7 @@ namespace weblamchoi.Controllers.Admin
             ViewBag.Success = "Đổi mật khẩu thành công.";
             return View(model);
         }
+
 
         public async Task<IActionResult> Edit(int id)
         {
@@ -224,6 +236,10 @@ namespace weblamchoi.Controllers.Admin
 
             int userIdInt = int.Parse(userId);
 
+            // Lấy user để hiển thị Points
+            var user = await _context.Users.FindAsync(userIdInt);
+            ViewBag.UserPoints = user?.Points ?? 0;
+
             var query = _context.Orders
                 .Where(o => o.UserID == userIdInt)
                 .Where(o => o.Status != "Tạm giữ" && o.Status != "Chờ thanh toán");
@@ -252,6 +268,7 @@ namespace weblamchoi.Controllers.Admin
 
             return View(orders);
         }
+
 
         [HttpPost]
         public IActionResult CancelOrder(int orderId)

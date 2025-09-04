@@ -175,6 +175,16 @@
             <strong>-@discountAmount.ToString("N0") ₫</strong>
         </div>
     }
+
+    <div class="summary-row use-points">
+        <label>
+            <input type="checkbox" id="usePointsCheckbox" value="1" /> Sử dụng điểm tích lũy (@(ViewBag.UserPoints ?? 0) điểm)
+        </label>
+    </div>
+    <input type="hidden" id="usePointsInput" name="usePoints" value="0" />
+
+
+
     <div class="summary-row total">
         <span>Tổng thanh toán</span>
         <strong>@totalAfterDiscount.ToString("N0") ₫</strong>
@@ -217,6 +227,7 @@
             <i class="bi bi-exclamation-triangle"></i> @TempData["VoucherError"]
         </div>
     }
+
 </div>
 
 <div class="payment-section">
@@ -264,6 +275,7 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // Hiệu ứng nút số lượng
         document.querySelectorAll('.quantity-btn').forEach(btn => {
             btn.addEventListener('click', function () {
                 this.style.transform = 'scale(0.95)';
@@ -271,6 +283,7 @@
             });
         });
 
+        // Thanh toán tại cửa hàng
         const confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
         const paymentForm = document.getElementById('paymentForm');
         const loadingEffect = document.getElementById('loadingEffect');
@@ -285,6 +298,27 @@
                     successEffect.classList.remove('d-none');
                     setTimeout(() => paymentForm.submit(), 1000);
                 }, 1500);
+            });
+        }
+
+        // -----------------------------
+        // Tính tổng thanh toán khi dùng điểm
+        const usePointsCheckbox = document.getElementById('usePointsCheckbox');
+        const totalDisplay = document.querySelector('.summary-row.total strong');
+        const totalAfterDiscount = @totalAfterDiscount; // tổng sau voucher
+        const userPoints = @ViewBag.UserPoints ?? 0; // điểm tích lũy
+        const usePointsInput = document.getElementById('usePointsInput');
+
+        if (usePointsCheckbox) {
+            usePointsCheckbox.addEventListener('change', function() {
+                let newTotal = totalAfterDiscount;
+                if (this.checked) {
+                    newTotal = Math.max(totalAfterDiscount - userPoints, 0);
+                    usePointsInput.value = "1";
+                } else {
+                    usePointsInput.value = "0";
+                }
+                totalDisplay.textContent = newTotal.toLocaleString('vi-VN') + ' ₫';
             });
         }
     });

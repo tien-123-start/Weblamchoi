@@ -119,7 +119,15 @@ namespace weblamchoi.Controllers
                         Date = order.OrderDate.Date,
                         TotalRevenue = order.TotalAmount ?? 0m
                     });
+
+                    // ✅ Cộng điểm cố định: 2 điểm / đơn hàng
+                    if (order.User != null)
+                    {
+                        order.User.Points += 2;
+                        TempData["SuccessMessage"] = $"Cập nhật trạng thái đơn hàng {orderId} thành {newStatus} thành công! Khách hàng được cộng 2 điểm.";
+                    }
                 }
+
 
                 _context.Orders.Update(order);
                 await _context.SaveChangesAsync();
@@ -136,6 +144,7 @@ namespace weblamchoi.Controllers
 
             return RedirectToAction("Details", new { id = orderId });
         }
+
 
         [HttpGet("RevenueReport")]
         public async Task<IActionResult> RevenueReport(DateTime? startDate, DateTime? endDate, string groupBy = "day")
