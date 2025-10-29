@@ -185,7 +185,7 @@ namespace weblamchoi.Controllers.Admin
             }
 
             user.PasswordHash = HashPassword(model.NewPassword);
-            _context.Entry(user).State = EntityState.Modified;
+            _context.Update(user);
             _context.SaveChanges();
 
             ViewBag.Success = "Đổi mật khẩu thành công.";

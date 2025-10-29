@@ -1,27 +1,36 @@
-﻿body {
+﻿/* Toàn trang */
+body {
     margin: 0;
-    font-family: Arial, sans-serif;
+    font-family: 'Segoe UI', Arial, sans-serif;
     background-color: #f4f6f9;
+    color: #333;
 }
 
+/* Bố cục chính */
 .content-container {
     display: flex;
-    min-height: calc(100vh - 56px); /* trừ chiều cao navbar */
+    min-height: calc(100vh - 56px); /* trừ chiều cao navbar nếu có */
 }
 
 /* Sidebar */
 .sidebar {
     width: 230px;
-    background-color: #2c3e50;
+    background: linear-gradient(180deg, #16a085, #1abc9c);
     color: #fff;
     flex-shrink: 0;
+    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.15);
+    position: relative;
+    z-index: 10;
 }
 
 .sidebar-header {
-    padding: 15px;
-    font-size: 18px;
+    padding: 16px 20px;
+    font-size: 19px;
     font-weight: bold;
-    border-bottom: 1px solid #1a252f;
+    text-align: center;
+    letter-spacing: 1px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
 .sidebar-menu {
@@ -35,18 +44,38 @@
         padding: 12px 20px;
         color: #ecf0f1;
         text-decoration: none;
-        transition: background 0.3s;
+        transition: all 0.25s ease;
+        border-left: 4px solid transparent;
     }
 
         .sidebar-menu li a:hover,
         .sidebar-menu li a.active {
-            background-color: #1abc9c;
+            background-color: rgba(255, 255, 255, 0.15);
+            border-left: 4px solid #ffffff;
             color: #fff;
         }
 
 /* Nội dung bên phải */
 .content-wrapper {
     flex: 1;
-    padding: 20px;
-    background-color: #ecf0f1;
+    padding: 25px;
+    background-color: #ffffff;
+    box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.05);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .content-container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        text-align: center;
+    }
+
+    .sidebar-menu li a {
+        display: inline-block;
+        padding: 10px 15px;
+    }
 }
