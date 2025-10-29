@@ -1,121 +1,186 @@
 ﻿@model weblamchoi.Models.ProductCreateViewModel
 @using weblamchoi.Models
 @{
+    ViewData["Title"] = "Tạo sản phẩm mới";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
 
-<h2 class="mb-4">Tạo sản phẩm mới</h2>
-
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger">
-        @TempData["Error"]
-    </div>
-}
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success">
-        @TempData["Success"]
-    </div>
-}
-
-<form asp-action="Create" method="post" enctype="multipart/form-data">
-    <div class="form-group">
-        <label asp-for="Product.ProductName">Tên sản phẩm</label>
-        <input asp-for="Product.ProductName" class="form-control" required />
-        <span asp-validation-for="Product.ProductName" class="text-danger"></span>
-    </div>
-
-    <div class="form-group">
-        <label asp-for="Product.CategoryID">Danh mục</label>
-        <select asp-for="Product.CategoryID" asp-items="Model.Categories" class="form-control" required>
-            <option value="">-- Chọn danh mục --</option>
-        </select>
-        <span asp-validation-for="Product.CategoryID" class="text-danger"></span>
-    </div>
-
-    <div class="form-group">
-        <label asp-for="Product.ManufacturerID">Nhà sản xuất</label>
-        <select asp-for="Product.ManufacturerID" asp-items="Model.Manufacturers" class="form-control">
-            <option value="">-- Chọn nhà sản xuất --</option>
-        </select>
-        <span asp-validation-for="Product.ManufacturerID" class="text-danger"></span>
-    </div>
-
-    <hr />
-    <h4>Thông tin quà tặng khuyến mãi</h4>
-
-    <div class="form-group">
-        <label asp-for="Product.BonusProductID">Chọn sản phẩm làm quà tặng</label>
-        <select asp-for="Product.BonusProductID" class="form-control">
-            <option value="">-- Chọn sản phẩm quà tặng --</option>
-            @if (Model.BonusProducts != null && Model.BonusProducts.Any())
+<div class="container-fluid py-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">@ViewData["Title"]</h4>
+            <a asp-action="Index" class="btn btn-light btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Quay lại
+            </a>
+        </div>
+        <div class="card-body">
+            @if (TempData["Error"] != null)
             {
-                @foreach (var item in Model.BonusProducts)
-                {
-                    <option value="@item.ProductID">
-                        @item.ProductName - @string.Format("{0:N0}₫", item.Price)
-                    </option>
-                }
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    @TempData["Error"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
             }
-            else
+            @if (TempData["Success"] != null)
             {
-                <option value="" disabled>Không có sản phẩm khuyến mãi khả dụng</option>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    @TempData["Success"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
             }
-        </select>
-        <span asp-validation-for="Product.BonusProductID" class="text-danger"></span>
-    </div>
+            <form asp-action="Create" method="post" enctype="multipart/form-data">
+                <div class="row g-3">
+                    <h5 class="mt-0">Thông tin cơ bản</h5>
+                    <div class="col-md-6">
+                        <label asp-for="Product.ProductName" class="form-label fw-semibold">Tên sản phẩm</label>
+                        <input asp-for="Product.ProductName" class="form-control" required />
+                        <span asp-validation-for="Product.ProductName" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Product.CategoryID" class="form-label fw-semibold">Danh mục</label>
+                        <select asp-for="Product.CategoryID" asp-items="Model.Categories" class="form-control" required>
+                            <option value="">-- Chọn danh mục --</option>
+                        </select>
+                        <span asp-validation-for="Product.CategoryID" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Product.ManufacturerID" class="form-label fw-semibold">Nhà sản xuất</label>
+                        <select asp-for="Product.ManufacturerID" asp-items="Model.Manufacturers" class="form-control">
+                            <option value="">-- Chọn nhà sản xuất --</option>
+                        </select>
+                        <span asp-validation-for="Product.ManufacturerID" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Product.IsAvailable" class="form-label fw-semibold">Hiển thị sản phẩm</label>
+                        <div class="form-check">
+                            <input asp-for="Product.IsAvailable" class="form-check-input" type="checkbox" checked />
+                            <label asp-for="Product.IsAvailable" class="form-check-label">Kích hoạt</label>
+                        </div>
+                    </div>
 
-    <div class="form-group">
-        <label asp-for="Product.StartDate">Bắt đầu khuyến mãi</label>
-        <input asp-for="Product.StartDate" type="datetime-local" class="form-control" value="@(Model.Product.StartDate?.ToString("yyyy-MM-ddTHH:mm") ?? "")" />
-        <span asp-validation-for="Product.StartDate" class="text-danger"></span>
-    </div>
+                    <h5 class="mt-4">Thông tin khuyến mãi</h5>
+                    <div class="col-md-6">
+                        <label asp-for="Product.BonusProductID" class="form-label fw-semibold">Sản phẩm quà tặng</label>
+                        <select asp-for="Product.BonusProductID" class="form-control">
+                            <option value="">-- Chọn sản phẩm quà tặng --</option>
+                            @if (Model.BonusProducts != null && Model.BonusProducts.Any())
+                            {
+                                @foreach (var item in Model.BonusProducts)
+                                {
+                                    <option value="@item.ProductID">
+                                        @item.ProductName - @string.Format("{0:N0}₫", item.Price)
+                                    </option>
+                                }
+                            }
+                            else
+                            {
+                                <option value="" disabled>Không có sản phẩm khuyến mãi khả dụng</option>
+                            }
+                        </select>
+                        <span asp-validation-for="Product.BonusProductID" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Product.StartDate" class="form-label fw-semibold">Bắt đầu khuyến mãi</label>
+                        <input asp-for="Product.StartDate" type="datetime-local" class="form-control" value="@(Model.Product.StartDate?.ToString("yyyy-MM-ddTHH:mm") ?? "")" />
+                        <span asp-validation-for="Product.StartDate" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Product.EndDate" class="form-label fw-semibold">Kết thúc khuyến mãi</label>
+                        <input asp-for="Product.EndDate" type="datetime-local" class="form-control" value="@(Model.Product.EndDate?.ToString("yyyy-MM-ddTHH:mm") ?? "")" />
+                        <span asp-validation-for="Product.EndDate" class="text-danger"></span>
+                    </div>
 
-    <div class="form-group">
-        <label asp-for="Product.EndDate">Kết thúc khuyến mãi</label>
-        <input asp-for="Product.EndDate" type="datetime-local" class="form-control" value="@(Model.Product.EndDate?.ToString("yyyy-MM-ddTHH:mm") ?? "")" />
-        <span asp-validation-for="Product.EndDate" class="text-danger"></span>
-    </div>
+                    <h5 class="mt-4">Thông tin sản phẩm</h5>
+                    <div class="col-md-6">
+                        <label asp-for="Product.Price" class="form-label fw-semibold">Giá bán</label>
+                        <input asp-for="Product.Price" class="form-control" type="number" step="0.01" required />
+                        <span asp-validation-for="Product.Price" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Product.Quantity" class="form-label fw-semibold">Số lượng</label>
+                        <input asp-for="Product.Quantity" class="form-control" type="number" required />
+                        <span asp-validation-for="Product.Quantity" class="text-danger"></span>
+                    </div>
+                    <div class="col-12">
+                        <label asp-for="Product.Description" class="form-label fw-semibold">Mô tả</label>
+                        <textarea asp-for="Product.Description" class="form-control" rows="4"></textarea>
+                        <span asp-validation-for="Product.Description" class="text-danger"></span>
+                    </div>
 
-    <hr />
-    <h4>Thông tin sản phẩm</h4>
+                    <h5 class="mt-4">Hình ảnh sản phẩm</h5>
+                    <div class="col-md-6">
+                        <label asp-for="Product.ImageURL" class="form-label fw-semibold">Ảnh đại diện</label>
+                        <input type="file" name="ImageFile" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                        <label for="ThumbnailFiles" class="form-label fw-semibold">Ảnh chi tiết sản phẩm</label>
+                        <input type="file" name="ThumbnailFiles" multiple class="form-control" />
+                    </div>
 
-    <div class="form-group">
-        <label asp-for="Product.Price">Giá bán</label>
-        <input asp-for="Product.Price" class="form-control" type="number" step="0.01" required />
-        <span asp-validation-for="Product.Price" class="text-danger"></span>
+                    <div class="col-12 mt-4">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="bi bi-save me-1"></i>Tạo sản phẩm
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>Hủy
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
+</div>
 
-    <div class="form-group">
-        <label asp-for="Product.Quantity">Số lượng</label>
-        <input asp-for="Product.Quantity" class="form-control" type="number" required />
-        <span asp-validation-for="Product.Quantity" class="text-danger"></span>
-    </div>
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        .card {
+            border-radius: 0.5rem;
+        }
 
-    <div class="form-group">
-        <label asp-for="Product.Description">Mô tả</label>
-        <textarea asp-for="Product.Description" class="form-control" rows="4"></textarea>
-        <span asp-validation-for="Product.Description" class="text-danger"></span>
-    </div>
+        .card-header {
+            border-radius: 0.5rem 0.5rem 0 0;
+        }
 
-    <div class="form-group">
-        <label asp-for="Product.ImageURL">Ảnh đại diện</label>
-        <input type="file" name="ImageFile" class="form-control" />
-    </div>
-    <div class="form-group">
-        <label for="ThumbnailFiles">Ảnh chi tiết sản phẩm</label>
-        <input type="file" name="ThumbnailFiles" multiple class="form-control" />
-    </div>
+        label.form-label {
+            font-weight: 700 !important;
+        }
 
-    <div class="form-check mb-3">
-        <input asp-for="Product.IsAvailable" class="form-check-input" type="checkbox" checked />
-        <label asp-for="Product.IsAvailable" class="form-check-label">Hiển thị sản phẩm</label>
-    </div>
+        .form-control, .form-check-input, .form-select {
+            border-radius: 0.25rem;
+        }
 
-    <button type="submit" class="btn btn-primary">Tạo sản phẩm</button>
-</form>
+        .btn-primary, .btn-secondary {
+            transition: all 0.2s;
+        }
+
+            .btn-primary:hover, .btn-secondary:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+
+        .alert-dismissible .btn-close {
+            padding: 1rem;
+        }
+    </style>
+}
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/additional-methods.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $("form").validate({
+                errorElement: "span",
+                errorClass: "text-danger",
+                highlight: function (element) {
+                    $(element).addClass("is-invalid");
+                },
+                unhighlight: function (element) {
+                    $(element).removeClass("is-invalid");
+                }
+            });
+        });
+    </script>
 }

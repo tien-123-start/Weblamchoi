@@ -1,163 +1,268 @@
 ﻿@model weblamchoi.Models.Product
 @using weblamchoi.Models
-
 @{
+    ViewData["Title"] = "Chỉnh sửa sản phẩm";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
 
-<h2>Chỉnh sửa sản phẩm</h2>
-
-<form asp-action="Edit" method="post" enctype="multipart/form-data">
-    <input type="hidden" asp-for="ProductID" />
-    <div class="form-group">
-        <label asp-for="ProductName">Tên sản phẩm</label>
-        <input asp-for="ProductName" class="form-control" />
-        <span asp-validation-for="ProductName" class="text-danger"></span>
-    </div>
-    <div class="form-group">
-        <label asp-for="CategoryID">Danh mục</label>
-        <select asp-for="CategoryID" asp-items="@(ViewData["CategoryID"] as IEnumerable<SelectListItem>)" class="form-control">
-            <option value="">Chọn danh mục</option>
-        </select>
-        <span asp-validation-for="CategoryID" class="text-danger"></span>
-    </div>
-    <div class="form-group">
-        <label asp-for="ManufacturerID">Nhà sản xuất</label>
-        <select asp-for="ManufacturerID" asp-items="@(ViewData["ManufacturerID"] as IEnumerable<SelectListItem>)" class="form-control">
-            <option value="">Chọn nhà sản xuất</option>
-        </select>
-        <span asp-validation-for="ManufacturerID" class="text-danger"></span>
-    </div>
-    <h4>Thông tin quà tặng khuyến mãi</h4>
-
-    <div class="form-group">
-        <label for="SelectedBonusProductID">Chọn sản phẩm làm quà tặng</label>
-        <select name="SelectedBonusProductID" class="form-control">
-            <option value="">-- Chọn sản phẩm quà tặng --</option>
-            @foreach (var item in ViewBag.BonusProducts as List<Product>)
-            {
-                <option value="@item.ProductID" selected="@(item.ProductID == Model.BonusProductID ? "selected" : null)">
-                    @item.ProductName - @string.Format("{0:N0}₫", item.Price)
-                </option>
-            }
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label for="StartDate">Bắt đầu khuyến mãi</label>
-        <input type="datetime-local" id="StartDate" name="StartDate" class="form-control"
-               value="@(Model.StartDate?.ToString("yyyy-MM-ddTHH:mm") ?? "")" />
-    </div>
-
-    <div class="form-group">
-        <label for="EndDate">Kết thúc khuyến mãi</label>
-        <input type="datetime-local" id="EndDate" name="EndDate" class="form-control"
-               value="@(Model.EndDate?.ToString("yyyy-MM-ddTHH:mm") ?? "")" />
-    </div>
-
-    <div class="form-group">
-        <label asp-for="Price">Giá</label>
-        <input asp-for="Price" class="form-control" />
-        <span asp-validation-for="Price" class="text-danger"></span>
-    </div>
-    <div class="form-group">
-        <label asp-for="Quantity">Số lượng</label>
-        <input asp-for="Quantity" class="form-control" />
-        <span asp-validation-for="Quantity" class="text-danger"></span>
-    </div>
-    <div class="form-group">
-        <label asp-for="Description">Mô tả</label>
-        <textarea asp-for="Description" class="form-control"></textarea>
-        <span asp-validation-for="Description" class="text-danger"></span>
-    </div>
-    <div class="form-group">
-        <label>Ảnh đại diện hiện tại:</label><br />
-        @if (!string.IsNullOrEmpty(Model.ImageURL))
-        {
-            string imagePath = Model.ImageURL.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-            ? Model.ImageURL
-            : Url.Content("~/" + Model.ImageURL.TrimStart('/'));
-
-            <img src="@imagePath" alt="@Model.ProductName" width="100" class="img-thumbnail" />
-        }
-        else
-        {
-            <span>Chưa có ảnh</span>
-        }
-    </div>
-
-    <div class="form-group mt-2">
-        <label>Chọn ảnh đại diện mới (nếu muốn thay):</label>
-        <input type="file" name="ImageFile" class="form-control" />
-    </div>
-
-    <div class="form-group">
-        <label>Ảnh Thumbnail hiện tại:</label>
-        @if (Model.Thumbnails?.Any() == true)
-        {
-            <div class="d-flex flex-wrap">
-                @foreach (var thumb in Model.Thumbnails)
-                {
-                    var thumbPath = thumb.ThumbnailURL.StartsWith("/")
-                    ? Url.Content(thumb.ThumbnailURL)
-                    : Url.Content("/" + thumb.ThumbnailURL);
-
-                    <img src="@thumbPath" alt="Thumb" width="50" class="m-1 border rounded" />
-                }
-            </div>
-        }
-        else
-        {
-            <p class="text-muted">Không có</p>
-        }
-    </div>
-    <div class="form-group">
-        <label>Thêm ảnh thumbnails mới (nếu muốn thay toàn bộ):</label>
-        <input type="file" name="ThumbnailFiles" class="form-control" multiple />
-    </div>
-
-    <div class="form-group">
-        <label asp-for="IsAvailable">Trạng thái</label>
-        <input asp-for="IsAvailable" type="checkbox" />
-    </div>
-
-    @if (ViewBag.BonusProductPreview != null)
-    {
-        <div class="alert alert-info mt-3">
-            <strong>Quà khuyến mãi hiện tại:</strong> @ViewBag.BonusProductPreview.BonusProductName (@ViewBag.BonusProductPreview.BonusProductPrice)
-            <br />
-            <small>Từ: @(ViewBag.BonusProductPreview.StartDate?.ToString("dd/MM/yyyy") ?? "Không xác định")</small>
-            <br />
-            <small>Đến: @(ViewBag.BonusProductPreview.EndDate?.ToString("dd/MM/yyyy") ?? "Không xác định")</small>
+<div class="container-fluid py-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">@ViewData["Title"]</h4>
+            <a asp-action="Index" class="btn btn-light btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Quay lại
+            </a>
         </div>
-    }
+        <div class="card-body">
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    @TempData["Error"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    @TempData["Success"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+            <form asp-action="Edit" method="post" enctype="multipart/form-data">
+                <input type="hidden" asp-for="ProductID" />
+                <div class="row g-3">
+                    <h5 class="mt-0">Thông tin cơ bản</h5>
+                    <div class="col-md-6">
+                        <label asp-for="ProductName" class="form-label fw-semibold">Tên sản phẩm</label>
+                        <input asp-for="ProductName" class="form-control" required />
+                        <span asp-validation-for="ProductName" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="CategoryID" class="form-label fw-semibold">Danh mục</label>
+                        <select asp-for="CategoryID" asp-items="@(ViewData["CategoryID"] as IEnumerable<SelectListItem>)" class="form-control" required>
+                            <option value="">-- Chọn danh mục --</option>
+                        </select>
+                        <span asp-validation-for="CategoryID" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="ManufacturerID" class="form-label fw-semibold">Nhà sản xuất</label>
+                        <select asp-for="ManufacturerID" asp-items="@(ViewData["ManufacturerID"] as IEnumerable<SelectListItem>)" class="form-control">
+                            <option value="">-- Chọn nhà sản xuất --</option>
+                        </select>
+                        <span asp-validation-for="ManufacturerID" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="IsAvailable" class="form-label fw-semibold">Hiển thị sản phẩm</label>
+                        <div class="form-check">
+                            <input asp-for="IsAvailable" class="form-check-input" type="checkbox" />
+                            <label asp-for="IsAvailable" class="form-check-label">Kích hoạt</label>
+                        </div>
+                    </div>
 
-    <button type="submit" class="btn btn-primary">Cập nhật</button>
-</form>
+                    <h5 class="mt-4">Thông tin khuyến mãi</h5>
+                    @if (ViewBag.BonusProductPreview != null)
+                    {
+                        <div class="col-12">
+                            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                                <strong>Quà khuyến mãi hiện tại:</strong> @ViewBag.BonusProductPreview.BonusProductName (@ViewBag.BonusProductPreview.BonusProductPrice)
+                                <br />
+                                <small>Từ: @(ViewBag.BonusProductPreview.StartDate?.ToString("dd/MM/yyyy") ?? "Không xác định")</small>
+                                <br />
+                                <small>Đến: @(ViewBag.BonusProductPreview.EndDate?.ToString("dd/MM/yyyy") ?? "Không xác định")</small>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        </div>
+                    }
+                    <div class="col-md-6">
+                        <label for="SelectedBonusProductID" class="form-label fw-semibold">Sản phẩm quà tặng</label>
+                        <select name="SelectedBonusProductID" class="form-control">
+                            <option value="">-- Chọn sản phẩm quà tặng --</option>
+                            @foreach (var item in ViewBag.BonusProducts as List<Product>)
+                            {
+                                <option value="@item.ProductID" selected="@(item.ProductID == Model.BonusProductID ? "selected" : null)">
+                                    @item.ProductName - @string.Format("{0:N0}₫", item.Price)
+                                </option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="StartDate" class="form-label fw-semibold">Bắt đầu khuyến mãi</label>
+                        <input type="datetime-local" id="StartDate" name="StartDate" class="form-control" value="@(Model.StartDate?.ToString("yyyy-MM-ddTHH:mm") ?? "")" />
+                    </div>
+                    <div class="col-md-6">
+                        <label for="EndDate" class="form-label fw-semibold">Kết thúc khuyến mãi</label>
+                        <input type="datetime-local" id="EndDate" name="EndDate" class="form-control" value="@(Model.EndDate?.ToString("yyyy-MM-ddTHH:mm") ?? "")" />
+                    </div>
+
+                    <h5 class="mt-4">Thông tin sản phẩm</h5>
+                    <div class="col-md-6">
+                        <label asp-for="Price" class="form-label fw-semibold">Giá bán</label>
+                        <input asp-for="Price" class="form-control" type="number" step="0.01" required />
+                        <span asp-validation-for="Price" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Quantity" class="form-label fw-semibold">Số lượng</label>
+                        <input asp-for="Quantity" class="form-control" type="number" required />
+                        <span asp-validation-for="Quantity" class="text-danger"></span>
+                    </div>
+                    <div class="col-12">
+                        <label asp-for="Description" class="form-label fw-semibold">Mô tả</label>
+                        <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+
+                    <h5 class="mt-4">Hình ảnh sản phẩm</h5>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Ảnh đại diện hiện tại</label>
+                        @if (!string.IsNullOrEmpty(Model.ImageURL))
+                        {
+                            string imagePath = Model.ImageURL.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                            ? Model.ImageURL
+                            : Url.Content("~/" + Model.ImageURL.TrimStart('/'));
+                            <div class="mb-2">
+                                <img src="@imagePath" alt="@Model.ProductName" class="img-thumbnail" style="max-width: 150px;" />
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted">Chưa có ảnh</p>
+                        }
+                        <label class="form-label fw-semibold">Chọn ảnh đại diện mới</label>
+                        <input type="file" name="ImageFile" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Ảnh chi tiết hiện tại</label>
+                        @if (Model.Thumbnails?.Any() == true)
+                        {
+                            <div class="d-flex flex-wrap mb-2">
+                                @foreach (var thumb in Model.Thumbnails)
+                                {
+                                    var thumbPath = thumb.ThumbnailURL.StartsWith("/")
+                                    ? Url.Content(thumb.ThumbnailURL)
+                                    : Url.Content("/" + thumb.ThumbnailURL);
+                                    <img src="@thumbPath" alt="Thumb" class="m-1 border rounded" style="max-width: 80px;" />
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted">Chưa có ảnh</p>
+                        }
+                        <label class="form-label fw-semibold">Thêm ảnh chi tiết mới</label>
+                        <input type="file" name="ThumbnailFiles" multiple class="form-control" />
+                    </div>
+
+                    <div class="col-12 mt-4">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="bi bi-save me-1"></i>Cập nhật
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>Hủy
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        .card {
+            border-radius: 0.5rem;
+        }
+
+        .card-header {
+            border-radius: 0.5rem 0.5rem 0 0;
+        }
+
+        label.form-label {
+            font-weight: 700 !important;
+        }
+
+        .form-control, .form-check-input, .form-select {
+            border-radius: 0.25rem;
+        }
+
+        .btn-primary, .btn-secondary {
+            transition: all 0.2s;
+        }
+
+            .btn-primary:hover, .btn-secondary:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+
+        .alert-dismissible .btn-close {
+            padding: 1rem;
+        }
+
+        .img-thumbnail, .border.rounded {
+            border-radius: 0.25rem;
+        }
+    </style>
+}
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/additional-methods.min.js"></script>
     <script>
-        const startDateInput = document.getElementById("StartDate");
-        const endDateInput = document.getElementById("EndDate");
-
-        function updateMinEndDate() {
-            if (startDateInput.value) {
-                endDateInput.min = startDateInput.value;
-
-                // Nếu EndDate hiện tại nhỏ hơn StartDate → reset
-                if (endDateInput.value && endDateInput.value < startDateInput.value) {
-                    endDateInput.value = "";
+        $(document).ready(function () {
+            $("form").validate({
+                errorElement: "span",
+                errorClass: "text-danger",
+                highlight: function (element) {
+                    $(element).addClass("is-invalid");
+                },
+                unhighlight: function (element) {
+                    $(element).removeClass("is-invalid");
+                },
+                rules: {
+                    "Product.Price": {
+                        required: true,
+                        number: true,
+                        min: 0
+                    },
+                    "Product.Quantity": {
+                        required: true,
+                        number: true,
+                        min: 0
+                    },
+                    "EndDate": {
+                        greaterThan: "#StartDate"
+                    }
+                },
+                messages: {
+                    "EndDate": {
+                        greaterThan: "Ngày kết thúc phải lớn hơn ngày bắt đầu."
+                    }
                 }
-            } else {
-                endDateInput.min = "";
+            });
+
+            // Custom validation method for EndDate > StartDate
+            $.validator.addMethod("greaterThan", function (value, element, param) {
+                if (!value || !$(param).val()) return true; // Skip if either is empty
+                return new Date(value) > new Date($(param).val());
+            }, "Ngày kết thúc phải lớn hơn ngày bắt đầu.");
+
+            const startDateInput = document.getElementById("StartDate");
+            const endDateInput = document.getElementById("EndDate");
+
+            function updateMinEndDate() {
+                if (startDateInput.value) {
+                    endDateInput.min = startDateInput.value;
+                    if (endDateInput.value && endDateInput.value < startDateInput.value) {
+                        endDateInput.value = "";
+                    }
+                } else {
+                    endDateInput.min = "";
+                }
             }
-        }
 
-        startDateInput.addEventListener("change", updateMinEndDate);
-
-        // Chạy khi load trang để thiết lập ban đầu
-        updateMinEndDate();
+            startDateInput.addEventListener("change", updateMinEndDate);
+            updateMinEndDate();
+        });
     </script>
 }

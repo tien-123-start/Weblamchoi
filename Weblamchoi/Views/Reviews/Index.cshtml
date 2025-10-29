@@ -5,49 +5,104 @@
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
 
-<h2>@ViewData["Title"]</h2>
-
-<table class="table table-bordered table-hover">
-    <thead>
-        <tr>
-            <th>Sản phẩm</th>
-            <th>Số bình luận</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var product in Model)
-        {
-            <tr>
-                <td>@product.ProductName</td>
-                <td>@product.Reviews?.Count()  </td>
-                <td>
-                    <a asp-controller="Reviews" asp-action="ByProduct" asp-route-productId="@product.ProductID" class="btn btn-primary btn-sm">
-                        Xem bình luận
-                    </a>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-<div class="d-flex justify-content-center mt-3">
-    @Html.PagedListPager(
-        Model,
-        page => Url.Action("Index", new { page }),
-        new PagedListRenderOptions {
-            DisplayLinkToFirstPage = PagedListDisplayMode.Always,
-            DisplayLinkToLastPage = PagedListDisplayMode.Always,
-            DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
-            DisplayLinkToNextPage = PagedListDisplayMode.Always,
-            MaximumPageNumbersToDisplay = 5,
-            LiElementClasses = new[] { "page-item" },
-            PageClasses = new[] { "page-link" }
-        })
+<div class="container-fluid py-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">@ViewData["Title"]</h4>
+            <a asp-controller="AdminDashboard" asp-action="Index" class="btn btn-light btn-sm">Quay trở lại Dashboard</a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th scope="col" class="ps-4">Sản phẩm</th>
+                            <th scope="col">Số bình luận</th>
+                            <th scope="col" class="text-end pe-4">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var product in Model)
+                        {
+                            <tr>
+                                <td class="ps-4">@product.ProductName</td>
+                                <td>
+                                    <span class="badge bg-info">@product.Reviews?.Count()</span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <a asp-controller="Reviews" asp-action="ByProduct" asp-route-productId="@product.ProductID" class="btn btn-primary btn-sm">
+                                        <i class="bi bi-eye me-1"></i>Xem bình luận
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-light d-flex justify-content-center">
+            @Html.PagedListPager(
+            Model,
+            page => Url.Action("Index", new { page }),
+                        new PagedListRenderOptions
+                        {
+                            DisplayLinkToFirstPage = PagedListDisplayMode.Always,
+                            DisplayLinkToLastPage = PagedListDisplayMode.Always,
+                            DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+                            DisplayLinkToNextPage = PagedListDisplayMode.Always,
+                            MaximumPageNumbersToDisplay = 5,
+                            LiElementClasses = new[] { "page-item" },
+                            PageClasses = new[] { "page-link" },
+                            UlElementClasses = new[] { "pagination", "mb-0" },
+                            LinkToPreviousPageFormat = "«",
+                            LinkToNextPageFormat = "»"
+                        })
+        </div>
+    </div>
 </div>
-<a asp-controller="AdminDashboard" asp-action="Index" class="btn btn-secondary mt-3">Quay trở lại Dashboard</a>
 
-@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
-@{
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        .table th, .table td {
+            vertical-align: middle;
+        }
+
+        .table th {
+            font-weight: 600;
+        }
+
+        .card {
+            border-radius: 0.5rem;
+        }
+
+        .card-header {
+            border-radius: 0.5rem 0.5rem 0 0;
+        }
+
+        .pagination .page-item.active .page-link {
+            background-color: #007bff;
+            border-color: #007bff;
+            color: white;
+        }
+
+        .pagination .page-link {
+            border-radius: 0.25rem;
+            margin: 0 2px;
+            transition: all 0.2s;
+        }
+
+            .pagination .page-link:hover {
+                background-color: #e9ecef;
+            }
+
+        .btn-primary {
+            transition: all 0.2s;
+        }
+
+            .btn-primary:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+    </style>
 }

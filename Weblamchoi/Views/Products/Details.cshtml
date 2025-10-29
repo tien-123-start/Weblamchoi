@@ -66,29 +66,32 @@
             <!-- Quà khuyến mãi -->
             <div class="bonus">
                 <h3>Quà khuyến mãi</h3>
-                @if (Model.BonusProduct != null)
+                @if (ViewBag.HasValidBonus)
                 {
                     <div class="bonus-content">
                         @if (!string.IsNullOrEmpty(Model.BonusProduct.ImageURL))
                         {
-                            string bonusImagePath = Model.BonusProduct.ImageURL.StartsWith("http") ? Model.BonusProduct.ImageURL : Url.Content(Model.BonusProduct.ImageURL);
-                            <img src="@bonusImagePath" alt="@Model.BonusProduct.ProductName" />
+                            var bonusImg = Model.BonusProduct.ImageURL.StartsWith("http")
+                            ? Model.BonusProduct.ImageURL
+                            : Url.Content(Model.BonusProduct.ImageURL);
+                            <img src="@bonusImg" alt="@Model.BonusProduct.ProductName" />
                         }
                         else
                         {
                             <span>Chưa có ảnh</span>
                         }
+
                         <div>
                             <h4>@Model.BonusProduct.ProductName</h4>
                             <p>@Model.BonusProduct.Price.ToString("N0") ₫</p>
                             <p>
-                                Từ: @(Model.StartDate?.ToString("dd/MM/yyyy") ?? "Không xác định")<br />
-                                Đến: @(Model.EndDate?.ToString("dd/MM/yyyy") ?? "Không xác định")
+                                Từ: @(Model.BonusProduct.StartDate?.ToString("dd/MM/yyyy") ?? "Không xác định")<br />
+                                Đến: @(Model.BonusProduct.EndDate?.ToString("dd/MM/yyyy") ?? "Không xác định")
                             </p>
                             <div class="mt-2">
                                 <input type="checkbox" id="applyDiscount" />
                                 <label for="applyDiscount">
-                                    Áp dụng khuyến mãi (@Model.DiscountPercentage% giảm giá + quà tặng)
+                                    Áp dụng khuyến mãi (@Model.BonusProduct.DiscountPercentage ?? 10% giảm giá + quà tặng)
                                 </label>
                             </div>
                         </div>
@@ -99,6 +102,7 @@
                     <p>Không có quà khuyến mãi</p>
                 }
             </div>
+
 
             <!-- Số lượng và Thêm vào giỏ hàng -->
             <div class="quantity-cart">
@@ -286,8 +290,7 @@
                     hiddenQuantity.value = val;
                 });
             }
-
-            // ==== Update price ====
+           // ==== Update price ====
             const priceEl = document.getElementById("productPrice");
             const checkbox = document.getElementById("applyDiscount");
             const priceBreakdownEl = document.getElementById("priceBreakdown");
@@ -297,47 +300,60 @@
             const hiddenApplyDiscount = document.getElementById("hiddenApplyDiscount");
 
             const originalPrice = parseFloat("@Model.Price.ToString(System.Globalization.CultureInfo.InvariantCulture)") || 0;
-            const discountPercentage = parseFloat("@(Model.BonusProduct?.DiscountPercentage?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0")") || 0;
-            const bonusProductPrice = parseFloat("@(Model.BonusProduct?.Price.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0")") || 0;
-
-            const formatCurrency = (amount) => {
+              const discountPercentage = parseFloat("@(Model.BonusProduct?.DiscountPercentage?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "10")") || 10; // Use double quotes for string
+        const bonusProductPrice = parseFloat("@((Model.BonusProduct?.Price ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture))");
+                    const formatCurrency = (amount) => {
                 return amount.toLocaleString('vi-VN') + ' ₫';
             };
 
-            function updatePrice() {
-                let discountedProductPrice = originalPrice;
-                let finalPrice = originalPrice;
-                let breakdownText = "";
-                let discountAmount = 0;
+               function updatePrice() {
+            let discountedProductPrice = originalPrice;
+            let finalPrice = originalPrice;
+            let discountAmount = 0;
+            let breakdownText = "";
 
-                if (checkbox && checkbox.checked) {
-                    discountAmount = originalPrice * (discountPercentage / 100);
-                    discountedProductPrice = originalPrice - discountAmount;
-                    finalPrice = discountedProductPrice + bonusProductPrice;
+            if (checkbox && checkbox.checked) {
+                // ✅ Tính giảm giá
+                discountAmount = originalPrice * (discountPercentage / 100);
+                discountedProductPrice = originalPrice - discountAmount;
 
-                    priceEl.innerHTML = `<span class="text-red-600 font-bold">${formatCurrency(originalPrice)}</span>`;
-                    breakdownText = `
-                        <p>Giá sản phẩm: ${formatCurrency(originalPrice)}</p>
-                        <p>Giá quà tặng: ${formatCurrency(bonusProductPrice)}</p>
-                        <p>Giảm giá (${discountPercentage}%): -${formatCurrency(discountAmount)}</p>
-                        <p><strong>Tổng cộng: ${formatCurrency(finalPrice)}</strong></p>
-                    `;
-                    hiddenApplyDiscount.value = "true";
-                    hiddenPriceInput.value = discountedProductPrice.toFixed(2);
-                    if (hiddenBonusProductId) hiddenBonusProductId.value = "@(Model.BonusProduct?.ProductID)";
-                    if (hiddenBonusPrice) hiddenBonusPrice.value = bonusProductPrice.toFixed(2);
-                } else {
-                    finalPrice = originalPrice;
-                    priceEl.innerHTML = `<span class="font-bold">${formatCurrency(finalPrice)}</span>`;
-                    breakdownText = `<p>Giá sản phẩm: ${formatCurrency(originalPrice)}</p>`;
-                    hiddenApplyDiscount.value = "false";
-                    hiddenPriceInput.value = originalPrice.toFixed(2);
-                    if (hiddenBonusProductId) hiddenBonusProductId.value = "";
-                    if (hiddenBonusPrice) hiddenBonusPrice.value = "0";
-                }
+                // ✅ Tổng cộng = Giá sau giảm + Giá quà tặng
+                finalPrice = discountedProductPrice + bonusProductPrice;
 
-                if (priceBreakdownEl) priceBreakdownEl.innerHTML = breakdownText;
+                // 🧾 Hiển thị giá
+                priceEl.innerHTML = `
+                    <span style="text-decoration:line-through; color:gray;">${formatCurrency(originalPrice)}</span>
+                    <span class="text-danger fw-bold ms-2">${formatCurrency(finalPrice)}</span>
+                `;
+
+                breakdownText = `
+                    <p>Giá sản phẩm: ${formatCurrency(originalPrice)}</p>
+                    <p>Giảm giá (${discountPercentage}%): -${formatCurrency(discountAmount)}</p>
+                    <p>Giá sau giảm: ${formatCurrency(discountedProductPrice)}</p>
+                    <p>Giá quà tặng: ${formatCurrency(bonusProductPrice)}</p>
+                    <p><strong>Tổng cộng: ${formatCurrency(finalPrice)}</strong></p>
+                `;
+
+                hiddenApplyDiscount.value = "true";
+                hiddenPriceInput.value = discountedProductPrice.toFixed(2);
+                if (hiddenBonusProductId) hiddenBonusProductId.value = "@(Model.BonusProduct?.ProductID)";
+                if (hiddenBonusPrice) hiddenBonusPrice.value = bonusProductPrice.toFixed(2);
+            } else {
+                // ❌ Không áp dụng giảm giá
+                finalPrice = originalPrice;
+
+                priceEl.innerHTML = `<span class="fw-bold">${formatCurrency(finalPrice)}</span>`;
+                breakdownText = `<p>Giá sản phẩm: ${formatCurrency(originalPrice)}</p>`;
+
+                hiddenApplyDiscount.value = "false";
+                hiddenPriceInput.value = originalPrice.toFixed(2);
+                if (hiddenBonusProductId) hiddenBonusProductId.value = "";
+                if (hiddenBonusPrice) hiddenBonusPrice.value = "0";
             }
+
+            // 🧩 Cập nhật giao diện chi tiết giá
+            if (priceBreakdownEl) priceBreakdownEl.innerHTML = breakdownText;
+        }
 
             if (checkbox) checkbox.addEventListener("change", updatePrice);
             updatePrice();
