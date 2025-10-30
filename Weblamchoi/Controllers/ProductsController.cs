@@ -12,6 +12,7 @@ using X.PagedList; // Thư viện phân trang
 
 namespace weblamchoi.Controllers.Admin
 {
+
     public class ProductsController : Controller
     {
         private readonly DienLanhDbContext _context;
@@ -25,7 +26,8 @@ namespace weblamchoi.Controllers.Admin
             _productService = productService;
         }
 
-        public async Task<IActionResult> Index(int? page)
+        [HttpGet]
+        public async Task<IActionResult> Index(int? page, int? productId)
         {
             int pageSize = 10;
             int pageNumber = page ?? 1;
@@ -35,10 +37,21 @@ namespace weblamchoi.Controllers.Admin
                 .Include(p => p.Manufacturer)
                 .Include(p => p.Thumbnails)
                 .Include(p => p.BonusProduct)
-                .OrderByDescending(p => p.ProductID);
+                .AsQueryable();
 
-            return View(products.ToPagedList(pageNumber, pageSize));
+            // ✅ Nếu có nhập ID sản phẩm thì lọc
+            if (productId.HasValue)
+            {
+                products = products.Where(p => p.ProductID == productId.Value);
+            }
+
+            var pagedProducts = products
+                .OrderByDescending(p => p.ProductID)
+                .ToPagedList(pageNumber, pageSize);
+
+            return View(pagedProducts);
         }
+
 
         [HttpGet]
         public async Task<IActionResult> Details(int id)
@@ -47,36 +60,38 @@ namespace weblamchoi.Controllers.Admin
                 .Include(p => p.Category)
                 .Include(p => p.Manufacturer)
                 .Include(p => p.Thumbnails)
-                .Include(p => p.BonusProduct)
+                .Include(p => p.BonusProduct) // load sản phẩm khuyến mãi
                 .FirstOrDefaultAsync(p => p.ProductID == id);
 
             if (product == null) return NotFound();
 
+            // Kiểm tra bonus còn hạn
+            bool hasValidBonus = product.BonusProductID.HasValue &&
+                                 product.StartDate.HasValue &&
+                                 product.EndDate.HasValue &&
+                                 product.StartDate.Value <= DateTime.Now &&
+                                 product.EndDate.Value >= DateTime.Now;
+            ViewBag.HasValidBonus = hasValidBonus;
+
+            // ViewBag.BonusProduct để View dễ gọi
+            ViewBag.BonusProduct = hasValidBonus ? product.BonusProduct : null;
+
+            // Sản phẩm liên quan
             var relatedProducts = await _context.Products
                 .Where(p => p.CategoryID == product.CategoryID && p.ProductID != product.ProductID)
                 .Include(p => p.Thumbnails)
                 .Take(8)
                 .ToListAsync();
 
-            var reviews = await _context.Reviews
-                .Where(r => r.ProductID == id)
-                .Include(r => r.User)
-                .OrderByDescending(r => r.ReviewDate)
-                .ToListAsync();
-
             ViewBag.RelatedProducts = relatedProducts;
-            ViewBag.Reviews = reviews;
             ViewBag.Categories = await _context.Categories.ToListAsync();
 
-            // 🔑 Kiểm tra login
+            // Review
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             bool canComment = false;
-
             if (userId != null)
             {
                 int userIdInt = int.Parse(userId);
-
-                // Kiểm tra user đã mua sản phẩm thành công chưa
                 bool hasPurchased = await _context.Orders
                     .Where(o => o.UserID == userIdInt && o.Status == "Thành công")
                     .SelectMany(o => o.OrderDetails)
@@ -84,25 +99,21 @@ namespace weblamchoi.Controllers.Admin
 
                 if (hasPurchased)
                 {
-                    // Kiểm tra user đã bình luận sản phẩm này chưa
                     bool alreadyReviewed = await _context.Reviews
                         .AnyAsync(r => r.ProductID == id && r.UserID == userIdInt);
 
-                    canComment = !alreadyReviewed; // chỉ cho comment nếu chưa comment trước đó
+                    canComment = !alreadyReviewed;
                 }
             }
-
             ViewBag.CanComment = canComment;
 
-            // Kiểm tra BonusProduct còn hạn không
-            if (product.BonusProduct != null)
-            {
-                if (product.BonusProduct.EndDate.HasValue &&
-                    product.BonusProduct.EndDate.Value < DateTime.Now)
-                {
-                    product.BonusProduct = null; // hết hạn thì ẩn luôn
-                }
-            }
+            var reviews = await _context.Reviews
+                .Where(r => r.ProductID == id)
+                .Include(r => r.User)
+                .OrderByDescending(r => r.ReviewDate)
+                .ToListAsync();
+
+            ViewBag.Reviews = reviews;
 
             return View(product);
         }
@@ -228,7 +239,10 @@ namespace weblamchoi.Controllers.Admin
 
                     product.ImageURL = "/uploads/" + uniqueFileName;
                 }
-
+                if (product.OriginalPrice == null || product.OriginalPrice == 0)
+                {
+                    product.OriginalPrice = product.Price;
+                }
                 try
                 {
                     _context.Products.Add(product);
@@ -510,8 +524,11 @@ namespace weblamchoi.Controllers.Admin
                     return View(product);
                 }
 
+                // GÁN GIÁ GỐC NẾU CHƯA CÓ
                 if (existing.OriginalPrice == null || existing.OriginalPrice == 0)
-                    existing.OriginalPrice = existing.Price;
+                {
+                    existing.OriginalPrice = existing.Price; // Dùng giá hiện tại làm gốc
+                }
 
                 existing.Price = product.Price;
                 await _context.SaveChangesAsync();
@@ -696,6 +713,23 @@ namespace weblamchoi.Controllers.Admin
 
             return RedirectToAction(nameof(Index));
         }
+        [HttpPost]
+        public async Task<IActionResult> RemoveBonus(int id)
+        {
+            var product = await _context.Products
+                .Include(p => p.BonusProduct)
+                .FirstOrDefaultAsync(p => p.ProductID == id);
+
+            if (product == null)
+                return NotFound();
+
+            product.BonusProductID = null;
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Đã gỡ sản phẩm khuyến mãi thành công!";
+            return RedirectToAction(nameof(Index));
+        }
+
 
     }
 }

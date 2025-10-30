@@ -2,40 +2,69 @@
 @{
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
+<h2 class="mb-4">Giảm giá sản phẩm theo %</h2>
 
-<h2>Giảm giá sản phẩm theo %</h2>
-
-<form asp-action="DiscountByPercent" method="post" class="mt-3">
+<form asp-action="DiscountByPercent" method="post" class="card p-4 shadow-sm">
     <input type="hidden" asp-for="ProductID" />
     <input type="hidden" asp-for="Price" id="PriceHidden" />
 
     <div class="mb-3">
-        <label class="form-label">Tên sản phẩm</label>
+        <label class="form-label fw-bold">Tên sản phẩm</label>
         <input class="form-control" value="@Model.ProductName" disabled />
     </div>
 
+    <!-- GIÁ GỐC -->
     <div class="mb-3">
-        <label class="form-label">Giá gốc</label>
-        <input class="form-control" value="@(Model.OriginalPrice != null ? string.Format("{0:N0} ₫", Model.OriginalPrice) : "")" readonly />
+        <label class="form-label fw-bold">Giá gốc</label>
+        @if (Model.OriginalPrice.HasValue && Model.OriginalPrice.Value > 0)
+        {
+            <input class="form-control bg-light"
+                   value="@string.Format("{0:N0} ₫", Model.OriginalPrice.Value)"
+                   readonly />
+        }
+        else
+        {
+            <div class="alert alert-info py-2 mb-0">
+                Chưa có giá gốc. Sẽ dùng <strong>giá hiện tại</strong> làm gốc.
+            </div>
+        }
     </div>
 
+    <!-- GIÁ HIỆN TẠI -->
     <div class="mb-3">
-        <label class="form-label">Giảm giá (%)</label>
-        <input type="number" class="form-control" id="DiscountPercent" value="0" min="0" max="100" step="0.01" />
-       
+        <label class="form-label fw-bold">Giá hiện tại</label>
+        <input class="form-control"
+               value="@string.Format("{0:N0} ₫", Model.Price)"
+               readonly />
     </div>
 
+    <!-- % GIẢM -->
     <div class="mb-3">
-        <label class="form-label">Giá sau giảm</label>
-        <input type="text" class="form-control" id="PriceDisplay"
-               value="@(Model.Price.ToString("F2"))" readonly />
+        <label class="form-label fw-bold">Giảm giá (%)</label>
+        <input type="number"
+               class="form-control"
+               id="DiscountPercent"
+               value="0"
+               min="0"
+               max="100"
+               step="0.01"
+               placeholder="Nhập % giảm..." />
     </div>
 
+    <!-- GIÁ SAU GIẢM – ẨN MẶC ĐỊNH -->
+    <div class="mb-3" id="DiscountResult" style="display: none;">
+        <label class="form-label fw-bold">Giá sau giảm</label>
+        <input type="text"
+               class="form-control fs-5 fw-bold text-danger"
+               id="PriceDisplay"
+               value=""
+               readonly />
+    </div>
 
-   
-
-    <button type="submit" class="btn btn-primary">Lưu giảm giá</button>
-    <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-success">Lưu giảm giá</button>
+        <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
+    </div>
 </form>
 
 @section Scripts {
@@ -44,8 +73,18 @@
         const discountInput = document.getElementById('DiscountPercent');
         const priceDisplay = document.getElementById('PriceDisplay');
         const priceHidden = document.getElementById('PriceHidden');
-        const originalPrice = @Model.OriginalPrice ?? 0;
-        const currentPrice = @Model.Price ?? @Model.OriginalPrice ?? 0;
+        const discountResult = document.getElementById('DiscountResult');
+
+        const originalPriceRaw = @(Model.OriginalPrice != null ? Model.OriginalPrice : 0m);
+        const currentPriceRaw = @(Model.Price != null ? Model.Price : 0m);
+        const originalPrice = originalPriceRaw > 0 ? originalPriceRaw : currentPriceRaw;
+
+        function formatVND(number) {
+            return new Intl.NumberFormat('vi-VN', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(Math.round(number)) + ' ₫';
+        }
 
         function updatePrice() {
             let percent = parseFloat(discountInput.value) || 0;
@@ -53,23 +92,43 @@
             if (percent > 100) percent = 100;
 
             const newPrice = originalPrice * (1 - percent / 100);
-            priceDisplay.value = newPrice.toFixed(2);
+            priceDisplay.value = formatVND(newPrice);
             priceHidden.value = newPrice.toFixed(2);
+
+            // HIỂN THỊ KẾT QUẢ NẾU CÓ % GIẢM
+            if (percent > 0) {
+                discountResult.style.display = 'block';
+            } else {
+                discountResult.style.display = 'none';
+            }
         }
 
-        // Khi load page, tính % giảm dựa trên giá hiện tại
-        window.addEventListener('load', () => {
-            let initialPercent = 0;
-            if (originalPrice > 0) {
-                initialPercent = 100 - (currentPrice / originalPrice * 100);
-                if (initialPercent < 0) initialPercent = 0;
-                if (initialPercent > 100) initialPercent = 100;
-            }
-            discountInput.value = initialPercent.toFixed(2);
-            updatePrice();
-        });
-
+        // CHỈ CẬP NHẬT KHI NGƯỜI DÙNG NHẬP
         discountInput.addEventListener('input', updatePrice);
+
+        // KHÔNG CẬP NHẬT KHI LOAD → ẨN KẾT QUẢ
+        window.addEventListener('load', () => {
+            discountResult.style.display = 'none';
+        });
     </script>
 
+    <style>
+        .card {
+            border-radius: 12px;
+            background: #fff;
+        }
+
+        .form-control[readonly] {
+            background-color: #f8f9fa !important;
+        }
+
+        #PriceDisplay {
+            font-size: 1.4rem !important;
+            color: #d63939 !important;
+        }
+
+        .alert {
+            font-size: 0.9rem;
+        }
+    </style>
 }

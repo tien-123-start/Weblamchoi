@@ -28,22 +28,41 @@ namespace weblamchoi.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(int? page)
+        public async Task<IActionResult> Index(int? page, int? productId)
         {
-            int pageSize = 10; // số đơn hàng mỗi trang
+            int pageSize = 10;
             int pageNumber = page ?? 1;
 
             var orders = _context.Orders
                 .Include(o => o.User)
                 .Include(o => o.Shipping)
                 .Include(o => o.Payment)
-                .OrderByDescending(o => o.OrderDate);
+                .Include(o => o.OrderDetails)
+                    .ThenInclude(od => od.Product)
+                .AsQueryable();
 
-            return View(orders.ToPagedList(pageNumber, pageSize));
+            if (productId.HasValue && productId > 0)
+            {
+                orders = orders.Where(o => o.OrderDetails.Any(od => od.ProductID == productId.Value));
+                ViewBag.SearchProductId = productId.Value;
+            }
+            else
+            {
+                ViewBag.SearchProductId = null;
+            }
+
+            var pagedOrders = orders
+                .OrderByDescending(o => o.OrderDate)
+                .ToPagedList(pageNumber, pageSize);
+
+            // Lưu trang hiện tại để quay lại
+            ViewBag.CurrentPage = pageNumber;
+
+            return View(pagedOrders);
         }
 
         [HttpGet("Details/{id}")]
-        public async Task<IActionResult> Details(int id)
+        public async Task<IActionResult> Details(int id, int? page, int? productId)
         {
             if (id <= 0)
             {
@@ -65,28 +84,23 @@ namespace weblamchoi.Controllers
                 return NotFound($"Không tìm thấy đơn hàng với ID = {id}");
             }
 
+            // Lưu lại trạng thái tìm kiếm và trang
+            ViewBag.SearchProductId = productId;
+            ViewBag.CurrentPage = page ?? 1;
+
             return View(order);
         }
 
         [HttpPost("UpdateStatus")]
-        public async Task<IActionResult> UpdateStatus(int orderId, string newStatus, int userId)
+        public async Task<IActionResult> UpdateStatus(int orderId, string newStatus)
         {
-            if (orderId <= 0)
-            {
-                TempData["ErrorMessage"] = "Mã đơn hàng không hợp lệ.";
-                return RedirectToAction("Index");
-            }
-
             var order = await _context.Orders
                 .Include(o => o.User)
                 .Include(o => o.OrderDetails)
                     .ThenInclude(od => od.Product)
                 .FirstOrDefaultAsync(o => o.OrderID == orderId);
 
-            if (order == null)
-            {
-                return NotFound();
-            }
+            if (order == null) return NotFound();
 
             string previousStatus = order.Status;
 
@@ -109,7 +123,8 @@ namespace weblamchoi.Controllers
                         if (product == null || product.Quantity < od.Quantity)
                         {
                             await transaction.RollbackAsync();
-                            return BadRequest($"Sản phẩm {od.Product?.ProductName ?? "?"} không đủ số lượng trong kho.");
+                            TempData["ErrorMessage"] = $"Sản phẩm {od.Product?.ProductName ?? "?"} không đủ số lượng.";
+                            return RedirectToAction("Details", new { id = orderId });
                         }
                         product.Quantity -= od.Quantity;
                     }
@@ -120,32 +135,133 @@ namespace weblamchoi.Controllers
                         TotalRevenue = order.TotalAmount ?? 0m
                     });
 
-                    // ✅ Cộng điểm cố định: 2 điểm / đơn hàng
                     if (order.User != null)
                     {
                         order.User.Points += 2;
-                        TempData["SuccessMessage"] = $"Cập nhật trạng thái đơn hàng {orderId} thành {newStatus} thành công! Khách hàng được cộng 2 điểm.";
                     }
                 }
 
-
                 _context.Orders.Update(order);
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
 
+                // Kiểm tra User tồn tại trước khi thêm Notification
+                if (order.User != null)
+                {
+                    var userExists = await _context.Users.AnyAsync(u => u.UserID == order.UserID);
+                    if (userExists)
+                    {
+                        var notification = new Notification
+                        {
+                            UserID = order.UserID,
+                            Message = $"Đơn hàng #{order.OrderID} đã được cập nhật sang trạng thái: {newStatus}",
+                            Link = "/Users/OrderHistory",
+                            Type = "OrderStatus",
+                            CreatedAt = DateTime.Now,
+                            IsRead = false,
+                            OrderID = order.OrderID
+                        };
+
+                        _context.Notifications.Add(notification);
+                        await _context.SaveChangesAsync();
+
+                        // Gửi thông báo cho user
+                        await _hubContext.Clients.Group($"User_{order.UserID}")
+                            .SendAsync("ReceiveOrderNotification", notification.Message, notification.Link, notification.NotificationId);
+                        _logger.LogInformation($"Sent notification to User_{order.UserID}: {notification.Message}");
+
+                        // Gửi thông báo cho admin (nếu cần)
+                        await _hubContext.Clients.Group("Admins")
+                            .SendAsync("ReceiveOrderNotification", $"Đơn hàng #{order.OrderID} cập nhật trạng thái: {newStatus}", $"/Orders/Details/{order.OrderID}", notification.NotificationId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Không thể tạo thông báo cho đơn hàng {order.OrderID}: người dùng với UserID {order.UserID} không tồn tại.");
+                        TempData["ErrorMessage"] = "Không thể tạo thông báo: người dùng không tồn tại.";
+                    }
+                }
+
+                await transaction.CommitAsync();
                 TempData["SuccessMessage"] = $"Cập nhật trạng thái đơn hàng {orderId} thành {newStatus} thành công!";
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                _logger.LogError(ex, $"Error updating order status for Order ID: {orderId}");
-                TempData["ErrorMessage"] = $"Lỗi khi cập nhật trạng thái đơn hàng: {ex.Message}";
+                _logger.LogError(ex, $"Error updating order {orderId} status to {newStatus}");
+                TempData["ErrorMessage"] = $"Có lỗi xảy ra: {ex.Message}";
             }
 
             return RedirectToAction("Details", new { id = orderId });
         }
 
+        [HttpPost("CancelOrder")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CancelOrder(int orderId)
+        {
+            var order = await _context.Orders
+                .Include(o => o.User)
+                .Include(o => o.OrderDetails)
+                .Include(o => o.Payment)
+                .Include(o => o.Shipping)
+                .FirstOrDefaultAsync(o => o.OrderID == orderId);
 
+            if (order == null) return NotFound();
+
+            if (order.Status == "Thành công" || order.Status == "Đã hủy")
+            {
+                TempData["ErrorMessage"] = "Không thể hủy đơn hàng đã Thành công hoặc Đã hủy.";
+                return RedirectToAction("Details", new { id = orderId });
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Cập nhật trạng thái
+                order.Status = "Đã hủy";
+                _context.Orders.Update(order);
+
+                // Xóa các liên kết nếu cần
+                if (order.OrderDetails != null)
+                    _context.OrderDetails.RemoveRange(order.OrderDetails);
+
+                if (order.Payment != null)
+                    _context.Payments.Remove(order.Payment);
+
+                if (order.Shipping != null)
+                    _context.Shippings.Remove(order.Shipping);
+
+                // Tạo thông báo cho user
+                if (order.User != null)
+                {
+                    var notification = new Notification
+                    {
+                        UserID = order.UserID,
+                        Message = $"Đơn hàng #{order.OrderID} của bạn đã bị admin hủy.",
+                        Link = "/Users/OrderHistory",
+                        Type = "OrderCancelledByAdmin",
+                        CreatedAt = DateTime.Now,
+                        IsRead = false,
+                        OrderID = order.OrderID
+                    };
+                    _context.Notifications.Add(notification);
+
+                    // Gửi thông báo real-time cho user
+                    await _hubContext.Clients.Group($"User_{order.UserID}")
+                        .SendAsync("ReceiveOrderNotification", notification.Message, notification.Link, notification.NotificationId);
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                TempData["SuccessMessage"] = $"Hủy đơn hàng #{orderId} thành công.";
+                return RedirectToAction("Details", new { id = orderId });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, $"Error cancelling order {orderId}");
+                TempData["ErrorMessage"] = $"Có lỗi xảy ra khi hủy đơn hàng: {ex.Message}";
+                return RedirectToAction("Details", new { id = orderId });
+            }
+        }
         [HttpGet("RevenueReport")]
         public async Task<IActionResult> RevenueReport(DateTime? startDate, DateTime? endDate, string groupBy = "day")
         {

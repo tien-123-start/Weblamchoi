@@ -81,8 +81,13 @@
     </span>
 </div>
 
-<a asp-controller="Orders" asp-action="Index" class="btn btn-secondary mt-3">Quay lại danh sách</a>
-
+<a asp-controller="Orders"
+   asp-action="Index"
+   asp-route-productId="@ViewBag.SearchProductId"
+   asp-route-page="@ViewBag.CurrentPage"
+   class="btn btn-secondary mt-3">
+    Quay lại danh sách
+</a>
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>

@@ -2,6 +2,18 @@
     ViewData["Title"] = "Đăng nhập";
 }
 <link rel="stylesheet" href="/css/login.css">
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success text-center">
+        @TempData["SuccessMessage"]
+    </div>
+}
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger text-center">
+        @ViewBag.Error
+    </div>
+}
 
 <div class="container d-flex justify-content-center align-items-center" style="min-height: 100vh;">
     <div class="card shadow-lg p-4 rounded" style="width: 100%; max-width: 400px; animation: fadeIn 0.6s;">
@@ -20,6 +32,12 @@
             </div>
 
             <button type="submit" class="btn btn-primary w-100 py-2">Đăng nhập</button>
+
+            <div class="text-center mt-3">
+                <a asp-action="ForgotPassword" class="text-decoration-none text-secondary">
+                    Quên mật khẩu?
+                </a>
+            </div>
 
             @if (ViewBag.Error != null)
             {

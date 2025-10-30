@@ -5,50 +5,168 @@
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
 
-<h2 class="mb-4">Danh sách đơn hàng</h2>
+<div class="container-fluid py-4">
+    <!-- Thông báo -->
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
 
-<table class="table table-bordered table-hover">
-    <thead class="table-primary">
-        <tr>
-            <th>Mã đơn</th>
-            <th>Khách hàng</th>
-            <th>Ngày đặt</th>
-            <th>Tổng tiền</th>
-            <th>Trạng thái</th>
-            <th>Hành động</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var order in Model)
-        {
-            <tr>
-                <td>@order.OrderID</td>
-                <td>@order.User?.FullName</td>
-                <td>@order.OrderDate.ToString("dd/MM/yyyy HH:mm")</td>
-                <td class="text-danger fw-bold">@((order.TotalAmount ?? 0).ToString("N0")) ₫</td>
-                <td>@order.Status</td>
-                <td>
-                    <a asp-action="Details" asp-route-id="@order.OrderID" class="btn btn-sm btn-info">Chi tiết</a>
-                </td>
-            </tr>
-        }
-    </tbody>
-    <a asp-controller="AdminDashboard" asp-action="Index" class="btn btn-secondary mt-3">Quay trở lại Dashboard</a>
+    <!-- Tiêu đề -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Quản lý đơn hàng</h2>
+    </div>
 
-</table>
-<div class="d-flex justify-content-center mt-3">
-    @Html.PagedListPager(
+    <!-- Form tìm kiếm -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form asp-action="Index" method="get" class="row g-3 align-items-center">
+                <div class="col-md-8 col-lg-6">
+                    <input type="number"
+                           name="productId"
+                           class="form-control"
+                           placeholder="Nhập ID sản phẩm..."
+                           min="1"
+                           value="@ViewBag.SearchProductId" />
+                </div>
+                <div class="col-md-4 col-lg-3">
+                    <button type="submit" class="btn btn-primary w-100">Tìm kiếm</button>
+                </div>
+                <div class="col-md-12 col-lg-3">
+                    <a asp-action="Index" class="btn btn-outline-secondary w-100">Làm mới</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bảng đơn hàng -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-3">Mã đơn</th>
+                            <th>Khách hàng</th>
+                            <th>Ngày đặt</th>
+                            <th>ID sản phẩm</th>
+                            <th>Tổng tiền</th>
+                            <th>Trạng thái</th>
+                            <th class="text-end pe-3">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var order in Model)
+                        {
+                            <tr>
+                                <td class="ps-3">@order.OrderID</td>
+                                <td>@(order.User?.FullName ?? "Khách vãng lai")</td>
+                                <td>@order.OrderDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>
+                                    @if (order.OrderDetails != null && order.OrderDetails.Any())
+                                    {
+                                        <div class="d-flex flex-column gap-1">
+                                            @foreach (var detail in order.OrderDetails)
+                                            {
+                                                <div>
+                                                    <span class="badge bg-info text-dark">
+                                                        @detail.ProductID
+                                                    </span>
+                                                    <span class="ms-1">@(detail.Product?.ProductName ?? "Sản phẩm không xác định")</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Không có sản phẩm</span>
+                                    }
+                                </td>
+                                <td class="text-danger fw-bold">@((order.TotalAmount ?? 0).ToString("N0")) ₫</td>
+                                <td>
+                                    <span class="badge bg-@(order.Status == "Đã giao" ? "success" : order.Status == "Đang xử lý" ? "warning" : "secondary")">
+                                        @order.Status
+                                    </span>
+                                </td>
+                                <td class="text-end pe-3">
+                                    <a asp-action="Details" 
+                                       asp-route-id="@order.OrderID" 
+                                       asp-route-productId="@ViewBag.SearchProductId"
+                                       asp-route-page="@Model.PageNumber"
+                                       class="btn btn-info btn-sm">
+                                        Chi tiết
+                                    </a>                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phân trang -->
+    <div class="d-flex justify-content-center mt-4">
+      @Html.PagedListPager(
     Model,
-    page => Url.Action("Index", "Orders", new { area = "", page }),
-        new PagedListRenderOptions
-        {
-            DisplayLinkToFirstPage = PagedListDisplayMode.Always,
-            DisplayLinkToLastPage = PagedListDisplayMode.Always,
-            DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
-            DisplayLinkToNextPage = PagedListDisplayMode.Always,
-            MaximumPageNumbersToDisplay = 5,
-            LiElementClasses = new[] { "page-item" },
-            PageClasses = new[] { "page-link" }
-        })
+    page => Url.Action("Index", new { 
+        page = page, 
+        productId = ViewBag.SearchProductId 
+    }),
+    new PagedListRenderOptions
+    {
+        DisplayLinkToFirstPage = PagedListDisplayMode.Always,
+        DisplayLinkToLastPage = PagedListDisplayMode.Always,
+        DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+        DisplayLinkToNextPage = PagedListDisplayMode.Always,
+        MaximumPageNumbersToDisplay = 5,
+        LiElementClasses = new[] { "page-item" },
+        PageClasses = new[] { "page-link" }
+    })
+    </div>
+
+    <!-- Nút quay lại -->
+    <div class="mt-4">
+        <a asp-controller="AdminDashboard" asp-action="Index" class="btn btn-outline-secondary">Quay lại Dashboard</a>
+    </div>
 </div>
- 
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .table th, .table td {
+            vertical-align: middle;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+        }
+
+        .card {
+            border-radius: 0.5rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+    </style>
+}
