@@ -1,285 +1,320 @@
-﻿@{
-    Layout = null;
-}
-<!DOCTYPE html>
-<html lang="vi">
+﻿<!DOCTYPE html>
+<html lang="en">
+
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
-    <style>
-        body {
-            height: 100vh;
-            display: flex;
-            margin: 0;
-            background: #f8f9fa; /* màu nền sáng */
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/Admindasboard.css">
 
-        /* Sidebar */
-        .sidebar {
-            width: 250px;
-            background: #1abc9c; /* xanh ngọc */
-            color: #fff;
-            padding-top: 20px;
-            flex-shrink: 0;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-        }
-
-            .sidebar h3 {
-                color: #fff;
-                text-align: center;
-                margin-bottom: 20px;
-                font-weight: bold;
-            }
-
-            .sidebar a {
-                display: block;
-                color: #ecf0f1;
-                padding: 12px 20px;
-                text-decoration: none;
-                font-size: 15px;
-                transition: 0.3s;
-            }
-
-                .sidebar a:hover {
-                    background: #16a085; /* xanh đậm hơn khi hover */
-                    color: #fff;
-                    padding-left: 25px; /* hiệu ứng trượt nhẹ */
-                }
-
-        /* Main */
-        .main {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Navbar */
-        .navbar {
-            flex-shrink: 0;
-            background: #34495e !important; /* xanh ghi đậm */
-        }
-
-            .navbar .navbar-brand {
-                font-weight: bold;
-                color: #ecf0f1 !important;
-            }
-
-        /* Content */
-        .content {
-            flex-grow: 1;
-            padding: 20px;
-            overflow-y: auto;
-            background: #ffffff; /* nền trắng tinh */
-            border-top: 1px solid #eaeaea;
-        }
-
-        /* Badge thông báo */
-        #notificationCount {
-            font-size: 0.75rem;
-            padding: 3px 6px;
-        }
-    </style>
-
+    @RenderSection("Styles", required: false)
 </head>
+
 <body>
-    <!-- Sidebar bên trái -->
-    <div class="sidebar">
-        <h3>Bảng điều khiển</h3>
-        <a asp-controller="AdminDashboard" asp-action="Index"><i class="bi bi-house"></i> Trang chính</a>
-        <a asp-controller="Products" asp-action="Index"><i class="bi bi-box"></i> Quản lý sản phẩm</a>
-        <a asp-controller="Categories" asp-action="Index"><i class="bi bi-folder"></i> Quản lý danh mục</a>
-        <a asp-controller="Orders" asp-action="Index"><i class="bi bi-receipt"></i> Quản lý đơn hàng</a>
-        <a asp-controller="Users" asp-action="Index"><i class="bi bi-person"></i> Quản lý người dùng</a>
-        <a asp-controller="Manufacturers" asp-action="Index"><i class="bi bi-tags"></i> Quản lý hãng SX</a>
-        <a asp-controller="Admin" asp-action="Index"><i class="bi bi-lock"></i> Quản lý admin</a>
-        <a asp-controller="Orders" asp-action="RevenueReport"><i class="bi bi-graph-up"></i> Quản lý doanh thu</a>
-        <a asp-controller="Reviews" asp-action="Index"><i class="bi bi-chat-dots"></i> Quản lý bình luận</a>
-        <a asp-controller="Vouchers" asp-action="Index"><i class="bi bi-gift"></i> Quản lý voucher</a>
-        <a asp-controller="Contact" asp-action="Admin"><i class="bi bi-envelope"></i> Quản lý liên hệ</a>
+    <!-- Sidebar -->
+    <div class="sidebar bg-dark text-white">
+        <h4 class="fw-bold">Bảng điều khiển</h4>
+        @{
+            var currentController = ViewContext.RouteData.Values["controller"]?.ToString()?.ToLower();
+            var currentAction = ViewContext.RouteData.Values["action"]?.ToString()?.ToLower();
+        }
+        <ul class="nav flex-column fw-semibold">
+            <li class="nav-item mb-2">
+                <a class="nav-link text-white d-flex align-items-center gap-2 @(currentController == "admindashboard" && currentAction == "index" ? "active" : "")" asp-controller="AdminDashboard" asp-action="Index">
+                    <i class="bi bi-house"></i> <span>Trang chính</span>
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a class="nav-link text-white d-flex align-items-center gap-2 @(currentController == "products" ? "active" : "")" asp-controller="Products" asp-action="Index">
+                    <i class="bi bi-box"></i> <span>Quản lý sản phẩm</span>
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a class="nav-link text-white d-flex align-items-center gap-2 @(currentController == "categories" ? "active" : "")" asp-controller="Categories" asp-action="Index">
+                    <i class="bi bi-folder"></i> <span>Quản lý danh mục</span>
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a class="nav-link text-white d-flex align-items-center gap-2 @(currentController == "orders" && currentAction != "revenuereport" ? "active" : "")" asp-controller="Orders" asp-action="Index">
+                    <i class="bi bi-receipt"></i> <span>Quản lý đơn hàng</span>
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a class="nav-link text-white d-flex align-items-center gap-2 @(currentController == "users" ? "active" : "")" asp-controller="Users" asp-action="Index">
+                    <i class="bi bi-person"></i> <span>Quản lý người dùng</span>
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a class="nav-link text-white d-flex align-items-center gap-2 @(currentController == "manufacturers" ? "active" : "")" asp-controller="Manufacturers" asp-action="Index">
+                    <i class="bi bi-tags"></i> <span>Quản lý hãng SX</span>
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a class="nav-link text-white d-flex align-items-center gap-2 @(currentController == "admin" ? "active" : "")" asp-controller="Admin" asp-action="Index">
+                    <i class="bi bi-lock"></i> <span>Quản lý admin</span>
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a class="nav-link text-white d-flex align-items-center gap-2 @(currentController == "orders" && currentAction == "revenuereport" ? "active" : "")" asp-controller="Orders" asp-action="RevenueReport">
+                    <i class="bi bi-graph-up"></i> <span>Quản lý doanh thu</span>
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a class="nav-link text-white d-flex align-items-center gap-2 @(currentController == "reviews" ? "active" : "")" asp-controller="Reviews" asp-action="Index">
+                    <i class="bi bi-chat-dots"></i> <span>Quản lý bình luận</span>
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a class="nav-link text-white d-flex align-items-center gap-2 @(currentController == "vouchers" ? "active" : "")" asp-controller="Vouchers" asp-action="Index">
+                    <i class="bi bi-gift"></i> <span>Quản lý voucher</span>
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a class="nav-link text-white d-flex align-items-center gap-2 @(currentController == "contact" ? "active" : "")" asp-controller="Contact" asp-action="Admin">
+                    <i class="bi bi-envelope"></i> <span>Quản lý liên hệ</span>
+                </a>
+            </li>
+        </ul>
     </div>
 
     <!-- Main -->
     <div class="main">
+
         <!-- Navbar -->
         <nav class="navbar navbar-dark bg-dark px-3">
             <a class="navbar-brand" href="/AdminDashboard">Admin</a>
             <div class="d-flex ms-auto align-items-center">
-                <!-- Thông báo -->
+                <!-- Notification Dropdown -->
                 <div class="dropdown me-3">
                     <a class="text-white position-relative" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-bell" style="font-size: 1.4rem;"></i>
                         <span id="notificationCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none">0</span>
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationDropdown" style="width: 300px; max-height: 400px; overflow-y: auto;">
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="notificationDropdown" style="width: 300px; max-height: 400px; overflow-y: auto;">
                         <li><h6 class="dropdown-header">Thông báo</h6></li>
                         <li id="notificationList">
                             <span class="dropdown-item-text text-muted">Chưa có thông báo</span>
                         </li>
-
                     </ul>
                 </div>
-                <a href="/Login/Logout" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> Đăng xuất</a>
+                <a class="user-dropdown-item text-danger"
+                   asp-controller="Login" asp-action="Logout">
+                    <i class="bi bi-box-arrow-right"></i> Đăng xuất
+                </a>
             </div>
         </nav>
 
-        <!-- Nội dung -->
+        <!-- Content -->
         <div class="content">
             @RenderBody()
         </div>
     </div>
+    <style>
+        .notification-item.read .notification-message {
+            color: #6c757d;
+            font-weight: normal;
+        }
 
+        .notification-item.unread .notification-message {
+            color: #000;
+            font-weight: bold;
+        }
+
+        .notification-link {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+            .notification-link:hover {
+                background-color: #f8f9fa;
+            }
+    </style>
+   
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+
     <script>
-                const notificationList = document.getElementById('notificationList');
+        // Cấu hình chung
+        const notificationList = document.getElementById('notificationList');
         const notificationCount = document.getElementById('notificationCount');
 
         function formatDate(dateString) {
             const date = new Date(dateString);
             return date.toLocaleString('vi-VN', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
             });
         }
 
-        async function loadNotifications() {
+        // Load thông báo từ DB
+              async function loadNotifications() {
             try {
-                const response = await fetch('/Notifications'); // URL API
-                if (!response.ok) {
-                    console.error('Lỗi load thông báo, status:', response.status);
-                    return;
-                }
-
-                const text = await response.text();
-                if (!text) {
-                    notificationList.innerHTML = `<span class="dropdown-item-text text-muted">Chưa có thông báo</span>`;
-                    return;
-                }
-
-                const notifications = JSON.parse(text);
-                const newOrders = notifications.filter(n => n.orderId > 0 && !n.isRead);
-
-                notificationList.innerHTML = ''; // xóa cũ
-
-                // Cập nhật badge
-                if (newOrders.length > 0) {
-                    notificationCount.innerText = newOrders.length;
-                    notificationCount.classList.remove('d-none');
-                } else {
-                    notificationCount.classList.add('d-none');
-                }
-
-                if (newOrders.length === 0) {
-                    notificationList.innerHTML = `<span class="dropdown-item-text text-muted">Chưa có đơn hàng mới</span>`;
-                } else {
-                    newOrders.forEach(notification => {
-                        const li = document.createElement('li');
-                        li.className = 'notification-item';
-                        li.innerHTML = `
-                            <a class="dropdown-item notification-link" href="${notification.link}" data-id="${notification.notificationId}">
-                                <div class="notification-message">${notification.message}</div>
-                                <div class="notification-time">${formatDate(notification.createdAt)}</div>
-                            </a>
-                        `;
-                        notificationList.appendChild(li);
-                    });
-                }
-
-                // Thêm nút "Đánh dấu tất cả đã xem" và "Xem tất cả"
-                const liActions = document.createElement('li');
-                liActions.innerHTML = `
-                    <hr class="dropdown-divider">
-                    <div class="d-flex justify-content-between px-2">
-                        <button id="markAllReadBtn" class="btn btn-sm btn-outline-primary">Đánh dấu tất cả đã xem</button>
-                        <a class="btn btn-sm btn-outline-secondary" href="/Orders">Xem tất cả</a>
-                    </div>
-                `;
-                notificationList.appendChild(liActions);
-
+                const response = await fetch('/api/notifications', {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const notifications = await response.json();
+                console.log('LOADED NOTIFICATIONS:', notifications); // PHẢI THẤY
+                displayNotifications(notifications);
             } catch (err) {
-                console.error('Lỗi load thông báo:', err);
+                console.error('LOAD NOTI ERROR:', err);
+                notificationList.innerHTML = `<span class="dropdown-item-text text-muted">Lỗi tải</span>`;
             }
         }
 
-        // Click vào 1 thông báo
-        notificationList.addEventListener('click', async function (e) {
+        // Hiển thị danh sách
+        function displayNotifications(notifications) {
+            const unreadCount = notifications.filter(n => !n.isRead).length;
+            notificationList.innerHTML = '';
+
+            if (unreadCount > 0) {
+                notificationCount.textContent = unreadCount;
+                notificationCount.classList.remove('d-none');
+            } else {
+                notificationCount.classList.add('d-none');
+            }
+
+            if (notifications.length === 0) {
+                notificationList.innerHTML = `<span class="dropdown-item-text text-muted">Chưa có thông báo</span>`;
+                return;
+            }
+
+            notifications.forEach(noti => {
+                notificationList.appendChild(createNotificationItem(noti));
+            });
+
+            // Nút hành động
+            const actionsLi = document.createElement('li');
+            actionsLi.innerHTML = `
+                <hr class="dropdown-divider">
+                <div class="d-flex justify-content-between px-2">
+                    <button id="markAllReadBtn" class="btn btn-sm btn-outline-primary">Đánh dấu tất cả</button>
+                    <a class="btn btn-sm btn-outline-secondary" href="/Admin/Orders">Xem tất cả</a>
+                </div>`;
+            notificationList.appendChild(actionsLi);
+        }
+
+        // Tạo item thông báo
+        function createNotificationItem(noti) {
+            const li = document.createElement('li');
+            li.className = `notification-item ${noti.isRead ? 'read' : 'unread'}`;
+            li.innerHTML = `
+                <a class="dropdown-item notification-link" href="${noti.link}" data-id="${noti.notificationId}">
+                    <div class="notification-message">${noti.message}</div>
+                    <div class="notification-time text-muted">${formatDate(noti.createdAt)}</div>
+                </a>`;
+            return li;
+        }
+
+        // SIGNALR: Kết nối + nhận real-time
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl('/notificationHub')
+            .withAutomaticReconnect([0, 2000, 5000, 10000])
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+
+        // Nhận thông báo real-time
+        connection.on('ReceiveOrderNotification', (message, link, notificationId) => {
+            console.log('NEW NOTIFICATION:', message);
+
+            // Tăng badge
+            let count = parseInt(notificationCount.textContent) || 0;
+            notificationCount.textContent = count + 1;
+            notificationCount.classList.remove('d-none');
+
+            // Tạo thông báo mới
+            const newNoti = {
+                notificationId,
+                message,
+                link,
+                isRead: false,
+                createdAt: new Date().toISOString()
+            };
+
+            const li = createNotificationItem(newNoti);
+            notificationList.insertBefore(li, notificationList.firstChild);
+
+            // Hiệu ứng mượt
+            li.style.opacity = '0';
+            li.style.transform = 'translateY(-10px)';
+            setTimeout(() => {
+                li.style.transition = 'all 0.3s ease';
+                li.style.opacity = '1';
+                li.style.transform = 'translateY(0)';
+            }, 10);
+
+            // Âm thanh (tùy chọn)
+            const audio = new Audio('/sounds/notification.mp3');
+            audio.play().catch(() => {});
+        });
+
+        // Bắt đầu kết nối
+        connection.start()
+            .then(() => {
+                console.log('SignalR CONNECTED');
+                loadNotifications();
+                setInterval(loadNotifications, 30000); // Tự động refresh
+            })
+            .catch(err => {
+                console.error('SignalR FAILED:', err);
+            });
+
+        // Reconnect: tự động join lại group
+        connection.onreconnected(() => {
+            console.log('SignalR RECONNECTED');
+            loadNotifications();
+        });
+
+        // Click: đánh dấu đã đọc
+        document.addEventListener('click', async (e) => {
             const link = e.target.closest('.notification-link');
             if (link) {
                 e.preventDefault();
-                const notiId = link.getAttribute('data-id');
-
+                const notiId = link.dataset.id;
                 try {
-                    const response = await fetch(`/Notifications/MarkAsRead/${notiId}`, { method: "POST" });
-                    if (response.ok) {
-                        link.closest('li').remove();
-                        let count = parseInt(notificationCount.innerText) || 0;
-                        notificationCount.innerText = count > 0 ? count - 1 : 0;
-                        if (parseInt(notificationCount.innerText) === 0) notificationCount.classList.add('d-none');
+                    await fetch(`/api/notifications/MarkAsRead/${notiId}`, {
+                        method: 'POST',
+                        headers: {
+                            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                        }
+                    });
+                    link.closest('li').classList.replace('unread', 'read');
+                    const count = parseInt(notificationCount.textContent) || 0;
+                    if (count <= 1) {
+                        notificationCount.classList.add('d-none');
+                    } else {
+                        notificationCount.textContent = count - 1;
                     }
                 } catch (err) {
-                    console.error("Lỗi khi đánh dấu đã đọc:", err);
+                    console.error('Mark read error:', err);
                 }
-
                 window.location.href = link.getAttribute('href');
             }
 
-            // Click nút "Đánh dấu tất cả đã xem"
-            if (e.target.id === "markAllReadBtn") {
+            if (e.target.id === 'markAllReadBtn') {
                 e.preventDefault();
                 try {
-                    const response = await fetch('/Notifications/MarkAllAsRead', { method: "POST" });
-                    if (response.ok) {
-                        // Xóa tất cả item thông báo
-                        notificationList.querySelectorAll('.notification-item').forEach(li => li.remove());
-                        notificationCount.innerText = "0";
-                        notificationCount.classList.add('d-none');
-                    }
+                    await fetch('/Users/MarkAllAsRead', { method: 'POST' });
+                    document.querySelectorAll('.notification-item.unread')
+                        .forEach(li => li.classList.replace('unread', 'read'));
+                    notificationCount.classList.add('d-none');
                 } catch (err) {
-                    console.error("Lỗi khi đánh dấu tất cả:", err);
+                    console.error('Mark all error:', err);
                 }
             }
         });
 
-        // SignalR realtime
-        const connection = new signalR.HubConnectionBuilder()
-            .withUrl("/notificationHub")
-            .withAutomaticReconnect()
-            .build();
-
-        connection.on("ReceiveOrderNotification", (message, orderId) => {
-            let count = parseInt(notificationCount.innerText) || 0;
-            notificationCount.innerText = count + 1;
-            notificationCount.classList.remove('d-none');
-
-            const li = document.createElement('li');
-            li.className = 'notification-item';
-            li.innerHTML = `
-                <a class="dropdown-item notification-link" href="/Admin/Orders/Details/${orderId}" data-id="0">
-                    <div class="notification-message">${message}</div>
-                    <div class="notification-time">${formatDate(new Date())}</div>
-                </a>
-            `;
-            notificationList.insertBefore(li, notificationList.firstChild);
+        // Tự động load khi mở lại tab
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) loadNotifications();
         });
-
-        connection.start().then(() => {
-            console.log("✅ SignalR connected");
-            connection.invoke("JoinAdminGroup");
-            loadNotifications();
-        }).catch(err => console.error(err));
-
-
-
     </script>
-
-
     @RenderSection("Scripts", required: false)
+
+ 
 </body>
 </html>

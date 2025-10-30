@@ -21,7 +21,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.ExpireTimeSpan = TimeSpan.FromHours(1); // Tùy chỉnh thời gian hết hạn cookie
     });
 builder.Services.AddAuthorization();
-
+builder.Services.AddSignalR();
 // DbContext
 builder.Services.AddDbContext<DienLanhDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -104,6 +104,7 @@ app.MapControllerRoute(
 app.MapControllerRoute(
     name: "admin",
     pattern: "Admin/{controller=AdminDashboard}/{action=Index}/{id?}");
+
 
 // SignalR hubs
 app.MapHub<ChatHub>("/chathub");

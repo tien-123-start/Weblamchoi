@@ -50,9 +50,18 @@ namespace weblamchoi.Controllers
                 .Include(p => p.Manufacturer)
                 .Include(p => p.Category)
                 .AsQueryable();
-
             if (!string.IsNullOrEmpty(keyword))
-                query = query.Where(p => p.ProductName.Contains(keyword));
+            {
+                keyword = keyword.Trim().ToLower();
+
+                query = query
+                    .Where(p => EF.Functions.Like(p.ProductName.ToLower(), $"%{keyword}%"))
+                    .OrderByDescending(p =>
+                        p.ProductName.ToLower().StartsWith(keyword) ? 2 :
+                        p.ProductName.ToLower().Contains(keyword) ? 1 : 0
+                    );
+            }
+
 
             if (manufacturerId.HasValue)
                 query = query.Where(p => p.ManufacturerID == manufacturerId.Value);
@@ -81,10 +90,12 @@ namespace weblamchoi.Controllers
                 return Json(new List<string>());
 
             var suggestions = _context.Products
-                .Where(p => p.ProductName.Contains(keyword))
+                .Where(p => EF.Functions.Like(p.ProductName.ToLower(), $"%{keyword.ToLower()}%"))
+                .OrderByDescending(p => p.ProductName.ToLower().StartsWith(keyword.ToLower()))
                 .Select(p => p.ProductName)
                 .Take(5)
                 .ToList();
+
 
             return Json(suggestions);
         }

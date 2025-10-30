@@ -8,6 +8,8 @@
         public string? Status { get; set; }
         public decimal? TotalAmount { get; set; }
         public string? VoucherCode { get; set; }
+        public bool IsDeleted { get; set; } = false;
+
         public User? User { get; set; }
         public ICollection<OrderDetail> OrderDetails { get; set; }
         public Shipping? Shipping { get; set; }

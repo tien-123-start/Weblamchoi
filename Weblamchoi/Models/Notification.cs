@@ -10,6 +10,7 @@
         public string? Type { get; set; }
         public int? OrderID { get; set; }
         public virtual Order? Order { get; set; }
+        public int? UserID { get; internal set; }
     }
 
 

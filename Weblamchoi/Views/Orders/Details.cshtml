@@ -1,9 +1,16 @@
-﻿
-@model weblamchoi.Models.Order
+﻿@model weblamchoi.Models.Order
 @using System.Globalization
 @{
     ViewData["Title"] = $"Chi tiết đơn hàng #{Model.OrderID}";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+@if (ViewBag.IsDeleted == true)
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i>
+        <strong>Đơn hàng này đã bị đánh dấu xóa.</strong> Không hiển thị ở danh sách.
+    </div>
 }
 
 <h3>Chi tiết đơn hàng #@Model.OrderID</h3>
@@ -27,6 +34,7 @@
         <dd class="col-sm-9">@(Model.Payment?.PaymentMethod ?? "N/A")</dd>
     </dl>
 
+    <!-- FORM CẬP NHẬT TRẠNG THÁI -->
     <form asp-controller="Orders" asp-action="UpdateStatus" method="post" class="mt-3">
         <input type="hidden" name="orderId" value="@Model.OrderID" />
         <div class="mb-3">
@@ -39,6 +47,11 @@
             </select>
         </div>
         <button type="submit" class="btn btn-success btn-sm">Lưu trạng thái</button>
+    </form>
+
+    <!-- FORM ĐÁNH DẤU XÓA (TÁCH RIÊNG) -->
+    <form asp-action="DeleteConfirmed" asp-controller="Orders" asp-route-orderId="@Model.OrderID" method="post" class="mt-2">
+        <button type="submit" class="btn btn-danger btn-sm">Đánh dấu xóa</button>
     </form>
 </div>
 
@@ -83,11 +96,10 @@
 
 <a asp-controller="Orders"
    asp-action="Index"
-   asp-route-productId="@ViewBag.SearchProductId"
-   asp-route-page="@ViewBag.CurrentPage"
    class="btn btn-secondary mt-3">
     Quay lại danh sách
 </a>
+
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>

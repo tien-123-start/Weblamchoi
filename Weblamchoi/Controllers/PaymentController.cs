@@ -1,10 +1,12 @@
 ﻿using DienLanhWeb.VNPAY;
+using MailKit.Search;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
 using System.Security.Claims;
-using weblamchoi.Models;
 using weblamchoi.Hubs;
+using weblamchoi.Models;
 namespace DienLanhWeb.Controllers
 {
     public class PaymentController : Controller
@@ -29,9 +31,8 @@ namespace DienLanhWeb.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> CreatePayment(string voucherCode = null)
+        public async Task<IActionResult> CreatePayment(int orderId, string voucherCode = null)
         {
-            // ✅ Lấy userId từ JWT token claim
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int userId))
             {
@@ -39,51 +40,32 @@ namespace DienLanhWeb.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            // ✅ Lấy tổng tiền từ DB (hoặc giỏ hàng của user)
-            var cartItems = await _context.Carts
-                .Include(c => c.Product)
-                .Where(c => c.UserID == userId)
-                .ToListAsync();
+            // Lấy order đã tạo từ CheckoutOnline
+            var order = await _context.Orders
+                .Include(o => o.OrderDetails)
+                .ThenInclude(od => od.Product)
+                .FirstOrDefaultAsync(o => o.OrderID == orderId && o.UserID == userId);
 
-            if (!cartItems.Any())
+            if (order == null)
             {
-                TempData["Message"] = "Giỏ hàng của bạn đang trống.";
+                TempData["Message"] = "Không tìm thấy đơn hàng.";
                 return RedirectToAction("Index", "Cart");
             }
 
-            decimal finalAmount = cartItems.Sum(c => (c.Price ?? c.Product.Price) * c.Quantity);
+            // Tính lại tổng tiền (đảm bảo khớp)
+            decimal finalAmount = (decimal)order.TotalAmount;
 
-            // ✅ Tạo mã giao dịch txnRef chính là OrderID (sau khi lưu Order)
-            var order = new Order
-            {
-                UserID = userId,
-                TotalAmount = finalAmount,
-                Status = "Tạm giữ", // trạng thái tạm thời
-                OrderDate = DateTime.Now,
-                VoucherCode = voucherCode,
-                OrderDetails = cartItems.Select(c => new OrderDetail
-                {
-                    ProductID = c.ProductID,
-                    Quantity = c.Quantity,
-                    UnitPrice = c.Price ?? c.Product?.Price ?? 0m
-                }).ToList()
-            };
-            _context.Orders.Add(order);
-            await _context.SaveChangesAsync();
-
-
-            // ✅ Sau khi SaveChanges, OrderID mới được sinh ra
             string txnRef = order.OrderID.ToString();
 
-            // ✅ Tạo request VNPay
             var vnPay = new VnPayLibrary();
             long vnpAmount = (long)(finalAmount * 100);
+
             vnPay.AddRequestData("vnp_Version", "2.1.0");
             vnPay.AddRequestData("vnp_Command", "pay");
             vnPay.AddRequestData("vnp_TmnCode", VNPAY_TMNCODE);
             vnPay.AddRequestData("vnp_Amount", vnpAmount.ToString());
             vnPay.AddRequestData("vnp_CurrCode", "VND");
-            vnPay.AddRequestData("vnp_TxnRef", txnRef); // dùng OrderID làm TxnRef
+            vnPay.AddRequestData("vnp_TxnRef", txnRef);
             vnPay.AddRequestData("vnp_OrderInfo", $"Thanh toán đơn hàng #{txnRef}");
             vnPay.AddRequestData("vnp_OrderType", "other");
             vnPay.AddRequestData("vnp_Locale", "vn");
@@ -92,83 +74,96 @@ namespace DienLanhWeb.Controllers
             vnPay.AddRequestData("vnp_IpAddr", HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1");
 
             string paymentUrl = vnPay.CreateRequestUrl(VNPAY_URL, VNPAY_HASHKEY);
-            return Redirect(paymentUrl);
+
+            return Redirect(paymentUrl); // Bây giờ sẽ chuyển đúng sang VNPAY
         }
-
-
         [AcceptVerbs("GET", "POST")]
         public async Task<IActionResult> PaymentReturn()
         {
             var vnpay = new VnPayLibrary();
-            Dictionary<string, string> vnp_Params = new Dictionary<string, string>();
 
-            if (Request.Method == "POST")
-            {
-                foreach (var key in Request.Form.Keys)
-                    vnp_Params[key] = Request.Form[key];
-            }
-            else
-            {
-                foreach (var key in Request.Query.Keys)
-                    vnp_Params[key] = Request.Query[key];
-            }
+            // LẤY DỮ LIỆU TỪ QUERY HOẶC FORM
+            IEnumerable<KeyValuePair<string, StringValues>> vnp_Params =
+                Request.Method == "POST" ? Request.Form : Request.Query;
 
-            foreach (var param in vnp_Params)
-            {
-                vnpay.AddResponseData(param.Key, param.Value);
-            }
+            foreach (var item in vnp_Params)
+                vnpay.AddResponseData(item.Key, item.Value.ToString());
 
             string vnp_SecureHash = vnpay.GetResponseData("vnp_SecureHash");
-            bool isValid = vnpay.ValidateSignature(vnp_SecureHash, VNPAY_HASHKEY);
-
-            if (!isValid)
+            if (!vnpay.ValidateSignature(vnp_SecureHash, VNPAY_HASHKEY))
             {
-                ViewBag.Message = "❌ Chữ ký không hợp lệ!";
+                ViewBag.Message = "Chữ ký không hợp lệ!";
                 return View();
             }
 
             string responseCode = vnpay.GetResponseData("vnp_ResponseCode");
             string txnRef = vnpay.GetResponseData("vnp_TxnRef");
 
-            var order = await _context.Orders
-                .FirstOrDefaultAsync(o => o.OrderID.ToString() == txnRef); // đổi sang Id (theo model của bạn)
-
-            if (order == null)
+            if (!int.TryParse(txnRef, out int orderId))
             {
-                ViewBag.Message = "❌ Không tìm thấy đơn hàng.";
+                ViewBag.Message = "Mã đơn hàng không hợp lệ.";
                 return View();
             }
 
+            var order = await _context.Orders
+                .Include(o => o.User)
+                .FirstOrDefaultAsync(o => o.OrderID == orderId);
+
+            if (order == null)
+            {
+                ViewBag.Message = "Không tìm thấy đơn hàng.";
+                return View();
+            }
+
+            // THANH TOÁN THÀNH CÔNG
             if (responseCode == "00")
             {
                 order.Status = "Đã thanh toán";
                 await _context.SaveChangesAsync();
 
-                // ✅ Lấy userId từ JWT Token claims
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (userId == null)
+                // XÓA GIỎ HÀNG
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (int.TryParse(userIdStr, out int userId))
                 {
-                    return RedirectToAction("Index", "Login "); // Nếu chưa đăng nhập
-                }
-
-                if (int.TryParse(userId, out int uid))
-                {
-                    var cartItems = _context.Carts.Where(c => c.UserID == uid);
+                    var cartItems = await _context.Carts.Where(c => c.UserID == userId).ToListAsync();
                     _context.Carts.RemoveRange(cartItems);
                     await _context.SaveChangesAsync();
                 }
 
-                ViewBag.Message = "✅ Thanh toán và cập nhật đơn hàng thành công!";
+                // GỬI THÔNG BÁO CHO ADMIN
+                var notification = new Notification
+                {
+                    UserID = null,
+                    Message = $"[THANH TOÁN THÀNH CÔNG] Đơn hàng #{order.OrderID} - {order.User?.FullName ?? "Khách"}",
+                    Link = $"/Orders/Details/{order.OrderID}", // XÓA /Admin/                    Type = "PaymentSuccess",
+                    CreatedAt = DateTime.Now,
+                    IsRead = false,
+                    OrderID = order.OrderID
+                };
+
+                _context.Notifications.Add(notification);
+                await _context.SaveChangesAsync();
+
+                // GỬI REAL-TIME QUA SIGNALR
+                await _hubContext.Clients.Group("Admins").SendAsync(
+                    "ReceiveOrderNotification",
+                    notification.Message,
+                    notification.Link,
+                    notification.NotificationId
+                );
+
+                ViewBag.Message = "Thanh toán thành công!";
+                ViewBag.OrderId = order.OrderID;
             }
             else
             {
                 order.Status = "Thanh toán thất bại";
                 await _context.SaveChangesAsync();
-                ViewBag.Message = $"❌ Thanh toán thất bại. Mã lỗi: {responseCode}";
+
+                ViewBag.Message = $"Thanh toán thất bại. Mã lỗi: {responseCode}";
             }
 
             return View();
         }
-
     }
 }

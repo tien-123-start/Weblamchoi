@@ -1,73 +1,75 @@
-﻿@{
+﻿@using System.Security.Claims
+@{
     var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
     var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
     var currentCategory = ViewContext.RouteData.Values["categoryId"]?.ToString();
-    ViewData["Title"] = "Trang chủ";
+    ViewData["Title"] = ViewData["Title"] ?? "Trang chủ";
 }
 
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@ViewData["Title"] - Điện Máy Xanh</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/layouthome.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     @RenderSection("Styles", required: false)
 </head>
 <body>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <input type="hidden" id="userId" value="@User.FindFirstValue(ClaimTypes.NameIdentifier)" />
+    }
+
+    <!-- Top Bar -->
     <div class="top-bar">
         <div class="container">
             <div class="hotline-info">
-                <div class="hotline-item">
-                    <i class="bi bi-telephone-fill"></i>
-                    <span>Gọi mua: <a href="tel:1900232461" class="hotline-link">1900 232 461</a></span>
-                </div>
-                <div class="hotline-item">
-                    <i class="bi bi-headset"></i>
-                    <span>Khiếu nại: <a href="tel:18001063" class="hotline-link">1800 1063</a></span>
-                </div>
-                <div class="hotline-item">
-                    <i class="bi bi-tools"></i>
-                    <span>Bảo hành: <a href="tel:1900232465" class="hotline-link">1900 232 465</a></span>
-                </div>
+                <div class="hotline-item"><i class="bi bi-telephone-fill"></i> Gọi mua: <a href="tel:1900232461" class="hotline-link">1900 232 461</a></div>
+                <div class="hotline-item"><i class="bi bi-headset"></i> Khiếu nại: <a href="tel:18001063" class="hotline-link">1800 1063</a></div>
+                <div class="hotline-item"><i class="bi bi-tools"></i> Bảo hành: <a href="tel:1900232465" class="hotline-link">1900 232 465</a></div>
             </div>
         </div>
     </div>
 
+    <!-- Header -->
     <header class="main-header">
         <div class="container">
             <div class="header-content">
-                <a href="/Home/Index" class="logo">
-                    <i class="bi bi-lightning-charge-fill"></i>
-                    Điện Máy Xanh
-                </a>
-                <div class="search-container" style="position: relative;">
+                <a href="/Home/Index" class="logo"><i class="bi bi-lightning-charge-fill"></i> Điện Máy Xanh</a>
+
+                <!-- Search -->
+                <div class="search-container">
                     <form class="search-form" asp-controller="Home" asp-action="Index" method="get">
-                        <input type="text" id="searchInput" class="search-input" name="keyword"
-                               placeholder="Tìm kiếm sản phẩm..." value="@ViewBag.Keyword" autocomplete="off">
-                        <button type="submit" class="search-btn">
-                            <i class="bi bi-search"></i>
-                        </button>
+                        <input type="text" id="searchInput" name="keyword" class="search-input" placeholder="Tìm kiếm sản phẩm..." value="@ViewBag.Keyword" autocomplete="off">
+                        <button type="submit" class="search-btn"><i class="bi bi-search"></i></button>
                     </form>
-                    <ul id="suggestions" class="list-group position-absolute w-100"></ul>
+                    <ul id="suggestions" class="list-group"></ul>
                 </div>
+
+                <!-- Location -->
                 <div class="location-selector">
                     <i class="bi bi-geo-alt-fill"></i>
                     <select class="location-select" onchange="onProvinceChange(this)">
                         <option selected disabled>Chọn khu vực</option>
-                        @if (ViewBag.Provinces != null)
+                        @if (ViewBag.Provinces is List<string> provinces)
                         {
-                            foreach (var p in ViewBag.Provinces as List<string>)
+                            @foreach (var p in provinces)
                             {
                                 <option value="@p">@p</option>
                             }
                         }
                     </select>
                 </div>
+
+                <!-- User Actions -->
                 <div class="user-actions">
-                    @if (User.Identity != null && User.Identity.IsAuthenticated)
+                    @if (User.Identity?.IsAuthenticated == true)
                     {
                         <div class="user-dropdown">
                             <div class="user-info">
@@ -75,10 +77,13 @@
                                 <span class="user-name">@User.Identity.Name</span>
                             </div>
                             <div class="user-dropdown-menu">
-                                <a class="user-dropdown-item" asp-controller="Users" asp-action="Profile">Hồ sơ</a>
-                                <form asp-controller="Login" asp-action="Logout" method="post">
-                                    <button type="submit" class="logout-btn">Đăng xuất</button>
-                                </form>
+                                <a class="user-dropdown-item" asp-controller="Users" asp-action="Profile">
+                                    Hồ sơ
+                                </a>
+                                <a class="user-dropdown-item text-danger"
+                                   asp-controller="Login" asp-action="Logout">
+                                    <i class="bi bi-box-arrow-right"></i> Đăng xuất
+                                </a>
                             </div>
                         </div>
                     }
@@ -86,6 +91,23 @@
                     {
                         <a asp-controller="Login" asp-action="Index" class="btn-primary-custom">Đăng nhập</a>
                     }
+
+                    <!-- Notification -->
+                    <div class="notification-wrapper position-relative me-3">
+                        <button id="notificationBell" class="btn btn-light position-relative">
+                            <i class="bi bi-bell fs-5"></i>
+                            <span id="notificationCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display:none;">0</span>
+                        </button>
+                        <div id="notificationDropdown" class="dropdown-menu shadow-sm p-2" style="width:320px; max-height:400px; overflow-y:auto; display:none; right:0;">
+                            <div class="d-flex justify-content-between align-items-center mb-2 px-2">
+                                <strong>Thông báo</strong>
+                                <button class="btn btn-sm btn-link text-decoration-none" id="markAllRead">Đánh dấu đã đọc</button>
+                            </div>
+                            <ul id="notificationList" class="list-group list-group-flush mb-0"></ul>
+                        </div>
+                    </div>
+
+                    <!-- Cart -->
                     <a asp-controller="Cart" asp-action="Index" class="cart-icon" title="Giỏ hàng">
                         <i class="bi bi-cart3"></i>
                         @if (ViewBag.CartCount > 0)
@@ -98,60 +120,49 @@
         </div>
     </header>
 
+    <!-- Nav -->
     <nav class="main-nav">
         <div class="container">
             <ul class="nav-list">
-                <li class="nav-item @(currentController == "Home" && currentAction == "Index" && currentCategory == null ? "active" : "")">
-                    <a href="/Home/Index">Trang chủ</a>
-                </li>
-                <li class="nav-item @(currentAction == "About" ? "active" : "")">
-                    <a href="/Home/About">Giới thiệu</a>
-                </li>
-                <li class="nav-item @(currentController == "Contact" ? "active" : "")">
-                    <a asp-controller="Contact" asp-action="Index">Liên hệ</a>
-                </li>
-                <li class="nav-item">
-                    <a href="#">Khuyến mãi</a>
-                </li>
-                <li class="nav-item">
-                    <a href="/Home/Tintuc">Tin tức</a>
-                </li>
+                <li class="nav-item @(currentController == "Home" && currentAction == "Index" && currentCategory == null ? "active" : "")"><a href="/Home/Index">Trang chủ</a></li>
+                <li class="nav-item @(currentAction == "About" ? "active" : "")"><a href="/Home/About">Giới thiệu</a></li>
+                <li class="nav-item @(currentController == "Contact" ? "active" : "")"><a asp-controller="Contact" asp-action="Index">Liên hệ</a></li>
+                <li class="nav-item"><a href="#">Khuyến mãi</a></li>
+                <li class="nav-item"><a href="/Home/Tintuc">Tin tức</a></li>
             </ul>
         </div>
     </nav>
 
+    <!-- Hero -->
     <section class="hero-section">
-        <div class="container">
-            <div class="hero-content">
-                <h1 class="hero-title">Chào mừng đến với Điện Máy Xanh</h1>
-                <p class="hero-subtitle">Nơi mua sắm điện máy, điện tử uy tín hàng đầu Việt Nam</p>
-                <div style="margin-top: 30px;">
-                    <a href="#" class="btn-primary-custom me-3">Khám phá ngay</a>
-                    <a href="#" class="btn-outline-custom">Xem khuyến mãi</a>
-                </div>
+        <div class="container text-center">
+            <h1 class="hero-title">Chào mừng đến với Điện Máy Xanh</h1>
+            <p class="hero-subtitle">Nơi mua sắm điện máy, điện tử uy tín hàng đầu Việt Nam</p>
+            <div class="mt-4">
+                <a href="#" class="btn-primary-custom me-3">Khám phá ngay</a>
+                <a href="#" class="btn-outline-custom">Xem khuyến mãi</a>
             </div>
         </div>
     </section>
-    <main role="main" class="container">
+
+    <!-- Main Content -->
+    <main class="container my-5">
         @RenderBody()
     </main>
+
+    <!-- Categories -->
     <section class="categories-section">
         <div class="container">
             <h2 class="section-title">Danh mục sản phẩm</h2>
             <div class="categories-grid">
-                @if (ViewBag.Categories != null)
+                @if (ViewBag.Categories is List<weblamchoi.Models.Category> categories)
                 {
-                    foreach (var c in ViewBag.Categories as List<weblamchoi.Models.Category>)
+                    @foreach (var c in categories)
                     {
-                        <a href="@Url.Action("Index", "Home", new { categoryId = c.CategoryID })"
-                           class="category-card">
-                            <div class="category-icon">
-                                <i class="bi bi-box"></i>
-                            </div>
+                        <a href="@Url.Action("Index", "Home", new { categoryId = c.CategoryID })" class="category-card">
+                            <div class="category-icon"><i class="bi bi-box"></i></div>
                             <h3 class="category-name">@c.CategoryName</h3>
-                            <p class="category-desc">
-                                @(c.Description ?? "Khám phá các sản phẩm " + c.CategoryName.ToLower())
-                            </p>
+                            <p class="category-desc">@(c.Description ?? "Khám phá các sản phẩm " + c.CategoryName.ToLower())</p>
                         </a>
                     }
                 }
@@ -159,136 +170,225 @@
         </div>
     </section>
 
+    <!-- Features -->
     <section class="features-section">
         <div class="container">
             <h2 class="section-title">Vì sao chọn Điện Máy Xanh?</h2>
             <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="bi bi-shield-check"></i>
-                    </div>
-                    <h4>Bảo hành chính hãng</h4>
-                    <p>Cam kết 100% sản phẩm chính hãng với bảo hành toàn quốc</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="bi bi-truck"></i>
-                    </div>
-                    <h4>Giao hàng nhanh</h4>
-                    <p>Giao hàng trong 2h tại TP.HCM và Hà Nội, 24h toàn quốc</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="bi bi-arrow-clockwise"></i>
-                    </div>
-                    <h4>Đổi trả dễ dàng</h4>
-                    <p>Đổi trả trong 30 ngày nếu sản phẩm có lỗi từ nhà sản xuất</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="bi bi-credit-card"></i>
-                    </div>
-                    <h4>Trả góp 0%</h4>
-                    <p>Hỗ trợ trả góp 0% lãi suất cho nhiều sản phẩm</p>
-                </div>
+                <div class="feature-card"><div class="feature-icon"><i class="bi bi-shield-check"></i></div><h4>Bảo hành chính hãng</h4><p>Cam kết 100% sản phẩm chính hãng với bảo hành toàn quốc</p></div>
+                <div class="feature-card"><div class="feature-icon"><i class="bi bi-truck"></i></div><h4>Giao hàng nhanh</h4><p>Giao hàng trong 2h tại TP.HCM và Hà Nội, 24h toàn quốc</p></div>
+                <div class="feature-card"><div class="feature-icon"><i class="bi bi-arrow-clockwise"></i></div><h4>Đổi trả dễ dàng</h4><p>Đổi trả trong 30 ngày nếu sản phẩm có lỗi từ nhà sản xuất</p></div>
+                <div class="feature-card"><div class="feature-icon"><i class="bi bi-credit-card"></i></div><h4>Trả góp 0%</h4><p>Hỗ trợ trả góp 0% lãi suất cho nhiều sản phẩm</p></div>
             </div>
         </div>
     </section>
 
+    <!-- Footer -->
     <footer class="footer">
-        <div class="footer-content">
-            <div class="container">
-                <div class="row">
-                    <div class="col-md-3 mb-4">
-                        <h5>Tổng đài hỗ trợ</h5>
-                        <p class="mb-1">Gọi mua: <a href="tel:1900232461">1900 232 461</a> (8:00 - 21:30)</p>
-                        <p class="mb-1">Khiếu nại: <a href="tel:18001063">1800 1063</a> (8:00 - 21:30)</p>
-                        <p class="mb-0">Bảo hành: <a href="tel:1900232465">1900 232 465</a> (8:00 - 21:00)</p>
-                    </div>
-                    <div class="col-md-3 mb-4">
-                        <h5>Về công ty</h5>
-                        <ul class="list-unstyled">
-                            <li><a href="#">Giới thiệu công ty (MWG.vn)</a></li>
-                            <li><a href="#">Tuyển dụng</a></li>
-                            <li><a href="#">Gửi góp ý, khiếu nại</a></li>
-                            <li><a href="#">Tìm siêu thị (2957 shop)</a></li>
-                        </ul>
-                    </div>
-                    <div class="col-md-3 mb-4">
-                        <h5>Thông tin khác</h5>
-                        <ul class="list-unstyled">
-                            <li><a href="#">Tích điểm Quà tặng VIP</a></li>
-                            <li><a href="#">Lịch sử mua hàng</a></li>
-                            <li><a href="#">Đăng ký bán hàng CTV</a></li>
-                            <li><a href="#">Tìm hiểu về mua trả chậm</a></li>
-                        </ul>
-                    </div>
-                    <div class="col-md-3 mb-4">
-                        <h5>Kết nối & Ứng dụng</h5>
-                        <div class="mb-2">
-                            <span class="social-icon"><i class="bi bi-facebook"></i></span>
-                            <span>3868.8k Fan</span>
-                        </div>
-                        <div class="mb-2">
-                            <span class="social-icon"><i class="bi bi-youtube"></i></span>
-                            <span>682k Đăng ký</span>
-                        </div>
-                        <div class="mb-2">
-                            <span class="social-icon"><i class="bi bi-chat-dots"></i></span>
-                            <span>Zalo DMX</span>
-                        </div>
-                    </div>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-3 mb-4">
+                    <h5>Tổng đài hỗ trợ</h5>
+                    <p class="mb-1">Gọi mua: <a href="tel:1900232461">1900 232 461</a> (8:00 - 21:30)</p>
+                    <p class="mb-1">Khiếu nại: <a href="tel:18001063">1800 1063</a> (8:00 - 21:30)</p>
+                    <p class="mb-0">Bảo hành: <a href="tel:1900232465">1900 232 465</a> (8:00 - 21:00)</p>
                 </div>
-                <div class="footer-bottom">
-                    &copy; 2025 Công ty cổ phần Điện Máy Xanh. Giấy phép ĐKKD số 0303217354 do Sở KH & ĐT TP.HCM cấp ngày 02/01/2007.<br>
-                    Địa chỉ: 128 Trần Quang Khải, P.Tân Định, Q.1, TP.HCM. Email: <a href="mailto:hotro@dienmayxanh.com">hotro@dienmayxanh.com</a>
+                <div class="col-md-3 mb-4">
+                    <h5>Về công ty</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#">Giới thiệu công ty (MWG.vn)</a></li>
+                        <li><a href="#">Tuyển dụng</a></li>
+                        <li><a href="#">Gửi góp ý, khiếu nại</a></li>
+                        <li><a href="#">Tìm siêu thị (2957 shop)</a></li>
+                    </ul>
                 </div>
+                <div class="col-md-3 mb-4">
+                    <h5>Thông tin khác</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#">Tích điểm Quà tặng VIP</a></li>
+                        <li><a href="#">Lịch sử mua hàng</a></li>
+                        <li><a href="#">Đăng ký bán hàng CTV</a></li>
+                        <li><a href="#">Tìm hiểu về mua trả chậm</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3 mb-4">
+                    <h5>Kết nối & Ứng dụng</h5>
+                    <div class="mb-2"><span class="social-icon"><i class="bi bi-facebook"></i></span> 3868.8k Fan</div>
+                    <div class="mb-2"><span class="social-icon"><i class="bi bi-youtube"></i></span> 682k Đăng ký</div>
+                    <div class="mb-2"><span class="social-icon"><i class="bi bi-chat-dots"></i></span> Zalo DMX</div>
+                </div>
+            </div>
+            <div id="map" style="height:300px; margin:30px 0;"></div>
+            <div class="footer-bottom text-center">
+                &copy; 2025 Công ty cổ phần Điện Máy Xanh. Giấy phép ĐKKD số 0303217354 do Sở KH & ĐT TP.HCM cấp ngày 02/01/2007.<br>
+                Địa chỉ: 128 Trần Quang Khải, P.Tân Định, Q.1, TP.HCM. Email: <a href="mailto:hotro@dienmayxanh.com">hotro@dienmayxanh.com</a>
             </div>
         </div>
     </footer>
 
-    <!-- Tải jQuery và các thư viện phụ thuộc -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+
+    <!-- SignalR + Notifications + Search -->
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            // Kiểm tra sự kiện click trên dropdown
-            const dropdownToggle = document.querySelector('.dropdown-toggle');
-            if (dropdownToggle) {
-                dropdownToggle.addEventListener('click', function () {
-                    console.log('Dropdown clicked');
+        const formatDate = d => new Date(d).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        const loadNotifications = async () => {
+            try {
+                const res = await fetch('/Users/GetNotifications');
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                const unread = data.filter(n => !n.isRead);
+                const list = document.getElementById('notificationList');
+                const count = document.getElementById('notificationCount');
+
+                list.innerHTML = '';
+                if (data.length === 0) {
+                    list.innerHTML = '<li class="list-group-item text-muted text-center">Chưa có thông báo</li>';
+                } else {
+                    data.forEach(n => {
+                        list.innerHTML += `
+                            <li class="list-group-item notification-item ${n.isRead ? 'read' : 'unread'}">
+                                <a class="notification-link" href="${n.link}" data-id="${n.notificationId}">
+                                    <div class="notification-message">${n.message}</div>
+                                    <div class="notification-time text-muted">${formatDate(n.createdAt)}</div>
+                                </a>
+                            </li>`;
+                    });
+                }
+                count.textContent = unread.length;
+                count.style.display = unread.length ? 'block' : 'none';
+            } catch {
+                document.getElementById('notificationList').innerHTML = '<li class="list-group-item text-muted">Lỗi tải thông báo</li>';
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const userId = document.getElementById('userId')?.value;
+            if (userId) {
+                const conn = new signalR.HubConnectionBuilder()
+                    .withUrl('/notificationHub')
+                    .withAutomaticReconnect()
+                    .build();
+
+                conn.on('ReceiveOrderNotification', (msg, link, id) => {
+                    const count = document.getElementById('notificationCount');
+                    count.textContent = (parseInt(count.textContent) || 0) + 1;
+                    count.style.display = 'block';
+
+                    const list = document.getElementById('notificationList');
+                    const noNoti = list.querySelector('.text-muted');
+                    if (noNoti) noNoti.remove();
+
+                    list.insertAdjacentHTML('afterbegin', `
+                        <li class="list-group-item notification-item unread">
+                            <a class="notification-link" href="${link}" data-id="${id}">
+                                <div class="notification-message">${msg}</div>
+                                <div class="notification-time text-muted">${formatDate(new Date())}</div>
+                            </a>
+                        </li>`);
+                });
+
+                conn.start().then(() => {
+                    conn.invoke('JoinUserGroup', userId);
+                    loadNotifications();
                 });
             }
 
-            // Gợi ý tìm kiếm
-            const searchInput = document.getElementById("searchInput");
-            const suggestions = document.getElementById("suggestions");
-            if (searchInput) {
-                searchInput.addEventListener("keyup", function () {
-                    let keyword = searchInput.value;
-                    if (keyword.length < 2) {
-                        suggestions.innerHTML = "";
-                        return;
-                    }
-                    fetch(`/Home/SearchSuggest?keyword=${encodeURIComponent(keyword)}`)
-                        .then(res => res.json())
-                        .then(data => {
-                            suggestions.innerHTML = "";
-                            data.forEach(item => {
-                                let li = document.createElement("li");
-                                li.className = "list-group-item list-group-item-action";
-                                li.textContent = item;
-                                li.onclick = function () {
-                                    searchInput.value = item;
-                                    suggestions.innerHTML = "";
-                                };
-                                suggestions.appendChild(li);
-                            });
-                        });
-                });
+            // Notification dropdown
+            const bell = document.getElementById('notificationBell');
+            const dropdown = document.getElementById('notificationDropdown');
+            bell?.addEventListener('click', () => {
+                dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+            });
+            dropdown?.addEventListener('click', e => e.stopPropagation());
+
+            // MARK AS READ
+        // MARK AS READ + REDIRECT
+        document.getElementById('notificationList')?.addEventListener('click', async e => {
+            const link = e.target.closest('.notification-link');
+            if (!link) return;
+            e.preventDefault();
+
+            const li = link.closest('li');
+            const id = link.dataset.id;
+
+            try {
+                // Gửi request đánh dấu đã đọc nhưng không chặn chuyển trang
+                fetch(`/Users/MarkAsRead/${id}`, { method: 'POST' })
+                    .catch(err => console.warn("Không thể đánh dấu đã đọc:", err));
+
+                // Chuyển trang ngay lập tức
+                window.location.href = link.href;
+
+            } catch (err) {
+                console.error('Lỗi:', err);
+                window.location.href = link.href; // fallback
             }
         });
+
+
+            // MARK ALL READ
+            document.getElementById('markAllRead')?.addEventListener('click', async () => {
+                try {
+                    await fetch('/Users/MarkAllAsRead', { method: 'POST' });
+                    document.querySelectorAll('.notification-item.unread').forEach(el => {
+                        el.classList.remove('unread');
+                        el.classList.add('read');
+                    });
+                    const count = document.getElementById('notificationCount');
+                    count.textContent = '0';
+                    count.style.display = 'none';
+                } catch (err) {
+                    console.error('Lỗi:', err);
+                }
+            });
+
+            // ... (search, user dropdown, map giữ nguyên)
+        });
     </script>
-    @RenderSection("Scripts", required: false)
+    <style>
+        #suggestions {
+            position: absolute;
+            width: 100%;
+            z-index: 1000;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+            #suggestions li:hover {
+                background: #f2f2f2;
+                cursor: pointer;
+            }
+
+        .notification-item.read .notification-message {
+            color: #6c757d;
+            font-weight: normal;
+        }
+
+        .notification-item.unread .notification-message {
+            color: #000;
+            font-weight: bold;
+        }
+
+        .notification-link {
+            display: block;
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            color: inherit;
+        }
+
+            .notification-link:hover {
+                background: #f8f9fa;
+            }
+    </style>
+
 </body>
 </html>

@@ -9,6 +9,7 @@ using X.PagedList; // Thư viện phân trang
 
 namespace weblamchoi.Controllers
 {
+
     [Authorize(Roles = "Admin")]
     [Route("Orders")]
     public class OrdersController : Controller
@@ -39,6 +40,8 @@ namespace weblamchoi.Controllers
                 .Include(o => o.Payment)
                 .Include(o => o.OrderDetails)
                     .ThenInclude(od => od.Product)
+                 .Where(o => !o.IsDeleted) // 🧩 Bỏ qua đơn đã đánh dấu xóa
+
                 .AsQueryable();
 
             if (productId.HasValue && productId > 0)
@@ -76,14 +79,14 @@ namespace weblamchoi.Controllers
                 .Include(o => o.Payment)
                 .Include(o => o.OrderDetails)
                     .ThenInclude(od => od.Product)
-                .FirstOrDefaultAsync(o => o.OrderID == id);
-
+                .FirstOrDefaultAsync(o => o.OrderID == id); // KHÔNG lọc IsDeleted
             if (order == null)
             {
                 _logger.LogWarning($"Order not found for ID: {id}");
                 return NotFound($"Không tìm thấy đơn hàng với ID = {id}");
             }
-
+            if (order.IsDeleted)
+                ViewBag.IsDeleted = true;
             // Lưu lại trạng thái tìm kiếm và trang
             ViewBag.SearchProductId = productId;
             ViewBag.CurrentPage = page ?? 1;
@@ -335,6 +338,51 @@ namespace weblamchoi.Controllers
 
             return View();
         }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteConfirmed(int orderId)
+        {
+            try
+            {
+                var order = await _context.Orders
+                    .FirstOrDefaultAsync(o => o.OrderID == orderId);
+
+                if (order == null)
+                {
+                    TempData["ErrorMessage"] = "Không tìm thấy đơn hàng.";
+                    return RedirectToAction("Index");
+                }
+
+                if (order.IsDeleted)
+                {
+                    TempData["ErrorMessage"] = "Đơn hàng này đã được đánh dấu xóa.";
+                    return RedirectToAction("Index");
+                }
+
+                // CHỈ CHO PHÉP ĐÁNH DẤU XÓA KHI ĐÃ HỦY
+                if (order.Status != "Đã hủy" && order.Status != "Chờ thanh toán")
+                {
+                    TempData["ErrorMessage"] = "Chỉ có thể đánh dấu xóa đơn hàng đã hủy hoặc chưa thanh toán.";
+                    return RedirectToAction("Details", new { id = orderId });
+                }
+
+
+                order.IsDeleted = true;
+                await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = $"Đã đánh dấu xóa đơn hàng #{orderId}.";
+                return RedirectToAction("Index");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Lỗi đánh dấu xóa đơn hàng {orderId}");
+                TempData["ErrorMessage"] = "Có lỗi xảy ra: " + ex.Message;
+                return RedirectToAction("Details", new { id = orderId });
+            }
+        }
+
+
 
     }
 }

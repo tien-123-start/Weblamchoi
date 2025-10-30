@@ -1,13 +1,15 @@
 ﻿using BCrypt.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using weblamchoi.Hubs;
 using weblamchoi.Models;
+using X.PagedList;
 using X.PagedList.Extensions;
-using X.PagedList; // Thư viện phân trang
 
 namespace weblamchoi.Controllers.Admin
 {
@@ -15,24 +17,28 @@ namespace weblamchoi.Controllers.Admin
     public class UsersController : Controller
     {
         private readonly DienLanhDbContext _context;
+        private readonly IHubContext<NotificationHub> _hubContext;
 
-        public UsersController(DienLanhDbContext context)
+        public UsersController(DienLanhDbContext context, IHubContext<NotificationHub> hubContext)
         {
             _context = context;
+            _hubContext = hubContext;
         }
 
+        // ========== DANH SÁCH NGƯỜI DÙNG ==========
         public IActionResult Index(int? page)
         {
             int pageSize = 10;
             int pageNumber = page ?? 1;
 
             var users = _context.Users
-                .OrderBy(u => u.UserID) // sắp xếp cho ổn định
+                .OrderBy(u => u.UserID)
                 .ToPagedList(pageNumber, pageSize);
 
             return View(users);
         }
 
+        // ========== TẠO TÀI KHOẢN ==========
         public IActionResult Create() => View();
 
         [HttpPost]
@@ -56,39 +62,28 @@ namespace weblamchoi.Controllers.Admin
             return Convert.ToHexString(hash);
         }
 
+        // ========== HỒ SƠ NGƯỜI DÙNG ==========
         public IActionResult Profile()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
-            {
-                Console.WriteLine("User ID is null or empty");
-                return RedirectToAction("Index", "Login");
-            }
+            if (string.IsNullOrEmpty(userId)) return RedirectToAction("Index", "Login");
 
             if (!int.TryParse(userId, out int parsedUserId))
-            {
-                Console.WriteLine("Invalid User ID format");
                 return RedirectToAction("Index", "Login");
-            }
 
             var user = _context.Users.Find(parsedUserId);
-            if (user == null)
-            {
-                Console.WriteLine($"User not found for ID: {parsedUserId}");
-                return NotFound();
-            }
+            if (user == null) return NotFound();
 
             var model = new UserProfileViewModel
             {
                 UserID = user.UserID,
                 FullName = user.FullName,
-                Email = user.Email, // Lấy giá trị Email từ database
+                Email = user.Email,
                 Phone = user.Phone,
                 Address = user.Address,
-                Points = user.Points // ✅ thêm ở đây
-
+                Points = user.Points
             };
-            ViewBag.UserPoints = user.Points; // <-- thêm dòng này
+            ViewBag.UserPoints = user.Points;
 
             return View(model);
         }
@@ -98,54 +93,27 @@ namespace weblamchoi.Controllers.Admin
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId) || model.UserID != int.Parse(userId))
-            {
-                Console.WriteLine("Unauthorized access or invalid UserID");
                 return Unauthorized();
-            }
 
             var user = _context.Users.Find(int.Parse(userId));
-            if (user == null)
-            {
-                Console.WriteLine("User not found");
-                return NotFound();
-            }
+            if (user == null) return NotFound();
 
             if (!ModelState.IsValid)
-            {
-                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
-                Console.WriteLine("ModelState errors: " + string.Join(", ", errors));
-                ViewBag.Errors = errors;
                 return View(model);
-            }
 
-            Console.WriteLine($"Current FullName: {user.FullName}, New FullName: {model.FullName}");
             user.FullName = model.FullName;
             user.Phone = model.Phone;
             user.Address = model.Address;
 
-            try
-            {
-                _context.Update(user); // Sử dụng Update thay vì đặt State trực tiếp
-                int changes = _context.SaveChanges();
-                Console.WriteLine($"Number of changes saved: {changes}");
-                if (changes > 0)
-                {
-                    ViewBag.Success = "Cập nhật thông tin thành công.";
-                }
-                else
-                {
-                    ViewBag.Error = "Không có thay đổi nào được lưu vào cơ sở dữ liệu.";
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"SaveChanges failed: {ex.Message}");
-                ViewBag.Error = $"Lỗi khi lưu dữ liệu: {ex.Message}";
-            }
-            ViewBag.UserPoints = user.Points; // <-- thêm dòng này
+            _context.Update(user);
+            _context.SaveChanges();
+            ViewBag.Success = "Cập nhật thông tin thành công.";
+            ViewBag.UserPoints = user.Points;
 
             return View(model);
         }
+
+        // ========== ĐỔI MẬT KHẨU ==========
         public IActionResult ChangePassword()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -154,13 +122,9 @@ namespace weblamchoi.Controllers.Admin
             var user = _context.Users.FirstOrDefault(u => u.UserID == int.Parse(userId));
             if (user == null) return NotFound();
 
-            ViewBag.UserPoints = user.Points; // gửi điểm tích lũy tới view
+            ViewBag.UserPoints = user.Points;
 
-            var model = new ChangePasswordViewModel
-            {
-                UserID = int.Parse(userId)
-            };
-            return View(model);
+            return View(new ChangePasswordViewModel { UserID = user.UserID });
         }
 
         [HttpPost]
@@ -173,7 +137,7 @@ namespace weblamchoi.Controllers.Admin
             var user = _context.Users.FirstOrDefault(u => u.UserID == int.Parse(userId));
             if (user == null) return NotFound();
 
-            ViewBag.UserPoints = user.Points; // gửi lại điểm sau khi submit
+            ViewBag.UserPoints = user.Points;
 
             if (!ModelState.IsValid)
                 return View(model);
@@ -192,7 +156,7 @@ namespace weblamchoi.Controllers.Admin
             return View(model);
         }
 
-
+        // ========== SỬA NGƯỜI DÙNG ==========
         public async Task<IActionResult> Edit(int id)
         {
             var user = await _context.Users.FindAsync(id);
@@ -218,83 +182,159 @@ namespace weblamchoi.Controllers.Admin
             return RedirectToAction(nameof(Index));
         }
 
+        // ========== XÓA NGƯỜI DÙNG ==========
         [HttpPost]
         public async Task<IActionResult> Delete(int id)
         {
             var user = await _context.Users.FindAsync(id);
             if (user == null) return NotFound();
-
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
+        // ========== LỊCH SỬ ĐƠN HÀNG ==========
         public async Task<IActionResult> OrderHistory(string status, int? page)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return RedirectToAction("Index", "Login");
 
-            int userIdInt = int.Parse(userId);
-
-            // Lấy user để hiển thị Points
-            var user = await _context.Users.FindAsync(userIdInt);
+            int uid = int.Parse(userId);
+            var user = await _context.Users.FindAsync(uid);
             ViewBag.UserPoints = user?.Points ?? 0;
-
             var query = _context.Orders
-                .Where(o => o.UserID == userIdInt)
+                .Where(o => o.UserID == uid)
                 .Where(o => o.Status != "Tạm giữ" && o.Status != "Chờ thanh toán");
-
             if (!string.IsNullOrEmpty(status))
                 query = query.Where(o => o.Status == status);
-
             int pageSize = 5;
             int pageNumber = page ?? 1;
-
-            // Lấy data bằng EF Core async trước
             var orderList = await query
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Product)
-                .OrderByDescending(o => o.OrderDate)
-                .ToListAsync();
-
-            // Rồi phân trang
+         .Include(o => o.OrderDetails)
+             .ThenInclude(od => od.Product)
+         .OrderByDescending(o => o.OrderDate)
+         .ToListAsync();
             var orders = orderList.ToPagedList(pageNumber, pageSize);
-
             var reviewedProductIds = await _context.Reviews
-               .Where(r => r.UserID == userIdInt)
-               .Select(r => r.ProductID)
-               .ToListAsync();
+                .Where(r => r.UserID == uid)
+                .Select(r => r.ProductID)
+                .ToListAsync();
             ViewBag.ReviewedProductIds = reviewedProductIds;
-
             return View(orders);
         }
 
-
+        // ========== HỦY ĐƠN HÀNG ==========
         [HttpPost]
-        public IActionResult CancelOrder(int orderId)
+        public async Task<IActionResult> CancelOrder(int orderId)
         {
-            var order = _context.Orders
-                .Include(o => o.OrderDetails)
-                .Include(o => o.Payment)
-                .Include(o => o.Shipping)
-                .FirstOrDefault(o => o.OrderID == orderId);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            int userIdInt = int.Parse(userId);
+            var order = await _context.Orders
+                .Include(o => o.User)
+                .FirstOrDefaultAsync(o => o.OrderID == orderId && o.UserID == userIdInt);
 
             if (order == null || !(order.Status == "Chờ xử lý" || order.Status == "Chờ thanh toán"))
                 return NotFound();
 
-            if (order.OrderDetails != null)
-                _context.OrderDetails.RemoveRange(order.OrderDetails);
+            order.Status = "Đã hủy";
+            _context.Orders.Update(order);
 
-            if (order.Payment != null)
-                _context.Payments.Remove(order.Payment);
+            // Tạo thông báo cho admin
+            var notification = new Notification
+            {
+                UserID = null, // ← null = thông báo chung (Admin)
+                Message = $"Khách hàng {order.User?.FullName ?? "Unknown"} đã hủy đơn hàng #{order.OrderID}",
+                Link = $"/Orders/Details/{order.OrderID}",               
+                CreatedAt = DateTime.Now,
+                IsRead = false,
+                OrderID = order.OrderID
+            };
+            _context.Notifications.Add(notification);
 
-            if (order.Shipping != null)
-                _context.Shippings.Remove(order.Shipping);
+            await _context.SaveChangesAsync();
 
-            _context.Orders.Remove(order);
+            // Gửi thông báo real-time cho nhóm Admins
+            await _hubContext.Clients.Group("Admins")
+                .SendAsync("ReceiveOrderNotification", notification.Message, notification.Link, notification.NotificationId);
+
+            TempData["SuccessMessage"] = "Hủy đơn hàng thành công.";
+            return RedirectToAction("OrderHistory");
+        }
+        // ========== LẤY THÔNG BÁO ==========
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> GetNotifications()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            int userIdInt = int.Parse(userId);
+            var isAdmin = User.IsInRole("Admin");
+
+            var notifications = await _context.Notifications
+                .Where(n => isAdmin ? n.UserID == 0 : n.UserID == userIdInt)
+                .OrderByDescending(n => n.CreatedAt)
+                .Take(50)
+                .Select(n => new
+                {
+                    n.NotificationId,
+                    n.Message,
+                    n.Link,
+                    n.IsRead,
+                    OrderId = n.OrderID,
+                    CreatedAt = n.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                })
+                .ToListAsync();
+
+            return Json(notifications);
+        }
+        // Trong UsersController.cs
+
+        // Đánh dấu một thông báo là đã đọc
+        [Authorize]
+        [HttpPost]
+        public IActionResult MarkAsRead(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var noti = _context.Notifications.FirstOrDefault(n => n.NotificationId == id);
+            if (noti == null) return NotFound();
+
+            // Chỉ admin hoặc đúng chủ thông báo mới được đánh dấu
+            if (noti.UserID != 0 && noti.UserID != int.Parse(userId))
+                return Forbid();
+
+            noti.IsRead = true;
             _context.SaveChanges();
 
-            return RedirectToAction("OrderHistory");
+            return Ok();
+        }
+
+
+
+        // Đánh dấu tất cả thông báo là đã đọc
+        [HttpPost]
+        public async Task<IActionResult> MarkAllAsRead()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            int userIdInt = int.Parse(userId);
+            var notifications = await _context.Notifications
+                .Where(n => (n.UserID == userIdInt || n.UserID == 0) && !n.IsRead)
+                .ToListAsync();
+
+            foreach (var notification in notifications)
+            {
+                notification.IsRead = true;
+                _context.Notifications.Update(notification);
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok();
         }
     }
 }

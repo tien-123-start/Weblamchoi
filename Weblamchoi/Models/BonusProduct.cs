@@ -11,7 +11,7 @@ public class BonusProduct : IValidatableObject
 
     public string? Name { get; set; } = string.Empty;
     public string? ImageURL { get; set; }
-    public decimal Price { get; set; }
+    public decimal? Price { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
 

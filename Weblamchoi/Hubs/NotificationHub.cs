@@ -1,21 +1,46 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using Polly;
-using System.Text.RegularExpressions;
+using System.Security.Claims;
 
 namespace weblamchoi.Hubs
 {
     public class NotificationHub : Hub
     {
-        // Gọi khi admin kết nối
-        public Task JoinAdminGroup()
+        public override async Task OnConnectedAsync()
         {
-            return Groups.AddToGroupAsync(Context.ConnectionId, "Admins");
+            var role = Context.User?.FindFirst(ClaimTypes.Role)?.Value;
+            var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (role == "Admin")
+            {
+                await Groups.AddToGroupAsync(Context.ConnectionId, "Admins");
+                // KHÔNG GỬI "joinedgroup" → TRÁNH WARNING
+            }
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                await Groups.AddToGroupAsync(Context.ConnectionId, $"User_{userId}");
+                // await Clients.Caller.SendAsync("joinedgroup", $"User_{userId}"); // XÓA NẾU CÓ
+            }
+
+            await base.OnConnectedAsync();
         }
 
-        // Server push thông báo cho admin
-        public async Task SendOrderNotification(string message, int orderId)
+        public override async Task OnDisconnectedAsync(Exception exception)
         {
-            await Clients.Group("Admins").SendAsync("ReceiveOrderNotification", message, orderId);
+            var role = Context.User?.FindFirst(ClaimTypes.Role)?.Value;
+            var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (role == "Admin")
+                await Groups.RemoveFromGroupAsync(Context.ConnectionId, "Admins");
+
+            if (!string.IsNullOrEmpty(userId))
+                await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"User_{userId}");
+
+            await base.OnDisconnectedAsync(exception);
         }
+
+        // (Tùy chọn) Gọi thủ công nếu cần
+        public async Task JoinAdminGroup() => await Groups.AddToGroupAsync(Context.ConnectionId, "Admins");
+        public async Task JoinUserGroup(string userId) => await Groups.AddToGroupAsync(Context.ConnectionId, $"User_{userId}");
     }
 }

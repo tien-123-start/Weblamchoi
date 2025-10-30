@@ -18,9 +18,12 @@ namespace weblamchoi.Models
         public string Address { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public bool IsActive { get; set; } = true;
-
+        public string? ResetToken { get; set; }
+        public DateTime? ResetTokenExpiry { get; set; }
         public virtual ICollection<Cart> Carts { get; set; } = new List<Cart>();
         public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
         public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
+        public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+
     }
 }

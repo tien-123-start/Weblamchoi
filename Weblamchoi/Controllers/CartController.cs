@@ -44,23 +44,24 @@ namespace weblamchoi.Controllers
                 ? totalAmount * (voucher.DiscountAmount / 100m)
                 : Math.Min(voucher.DiscountAmount, totalAmount);
 
+            // ✅ QUAN TRỌNG: Lưu voucher code và discount vào TempData với string format
             TempData["VoucherCode"] = voucherCode;
-            TempData["DiscountAmount"] = discount;
+            TempData["VoucherDiscount"] = discount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture); // Lưu string
+            TempData["VoucherMessage"] = $"Áp dụng mã giảm giá thành công: {voucherCode} (Giảm {discount:N0} đ)";
 
-            TempData["VoucherMessage"] = $"Áp dụng mã giảm giá thành công: {voucherCode}";
+            TempData.Keep("VoucherCode"); // Đảm bảo voucher code persist
+            TempData.Keep("VoucherDiscount");
+
             return RedirectToAction("Index");
         }
-
         public async Task<IActionResult> IndexAsync(string voucherCode = null)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return RedirectToAction("Index", "Login");
             int userIdInt = int.Parse(userId);
 
-            // ======= Thêm đoạn này =======
             var user = await _context.Users.FirstOrDefaultAsync(u => u.UserID == userIdInt);
             ViewBag.UserPoints = user?.Points ?? 0;
-            // ============================
 
             var cartItems = _context.Carts
                 .Include(c => c.Product)
@@ -69,37 +70,51 @@ namespace weblamchoi.Controllers
 
             decimal totalAmount = cartItems.Sum(c => (c.Price ?? c.Product?.Price ?? 0) * c.Quantity);
 
+            // ✅ Kiểm tra voucher từ TempData trước
             if (string.IsNullOrEmpty(voucherCode))
             {
                 voucherCode = TempData["VoucherCode"] as string;
-                TempData.Keep("VoucherCode");
+                if (!string.IsNullOrEmpty(voucherCode))
+                {
+                    TempData.Keep("VoucherCode"); // Keep voucher code for next requests
+                }
             }
 
             decimal discount = 0;
             if (!string.IsNullOrEmpty(voucherCode))
             {
-                var voucher = _context.Vouchers
-                    .FirstOrDefault(v => v.Code == voucherCode && v.IsActive && v.StartDate <= DateTime.Now && v.EndDate >= DateTime.Now);
-                if (voucher != null)
+                // ✅ Ưu tiên dùng discount đã tính sẵn từ ApplyVoucher
+                var savedDiscount = TempData["VoucherDiscount"] as string;
+                if (!string.IsNullOrEmpty(savedDiscount) && decimal.TryParse(savedDiscount, out decimal parsedDiscount))
                 {
-                    discount = voucher.IsPercentage
-                        ? totalAmount * (voucher.DiscountAmount / 100m)
-                        : Math.Min(voucher.DiscountAmount, totalAmount);
+                    discount = parsedDiscount;
+                }
+                else
+                {
+                    // Fallback: Tính lại discount từ voucher
+                    var voucher = _context.Vouchers
+                        .FirstOrDefault(v => v.Code == voucherCode && v.IsActive && v.StartDate <= DateTime.Now && v.EndDate >= DateTime.Now);
+                    if (voucher != null)
+                    {
+                        discount = voucher.IsPercentage
+                            ? totalAmount * (voucher.DiscountAmount / 100m)
+                            : Math.Min(voucher.DiscountAmount, totalAmount);
+                    }
                 }
             }
 
-            decimal finalAmount = totalAmount - discount;
-            if (finalAmount < 0) finalAmount = 0;
-            ViewBag.Categories = await _context.Categories.ToListAsync();
+            decimal finalAmount = Math.Max(totalAmount - discount, 0);
 
+            // ✅ Set ViewBag values để view sử dụng
             ViewBag.TotalAmount = totalAmount;
             ViewBag.DiscountAmount = discount;
             ViewBag.TotalAfterDiscount = finalAmount;
             ViewData["AppliedVoucherCode"] = voucherCode;
 
+            ViewBag.Categories = await _context.Categories.ToListAsync();
+
             return View(cartItems);
         }
-
 
         [HttpPost]
         public async Task<IActionResult> Add(int productId, int quantity = 1, decimal price = 0, int? bonusProductId = null, decimal bonusPrice = 0, bool applyDiscount = false)
@@ -201,13 +216,16 @@ namespace weblamchoi.Controllers
         [HttpPost]
         public async Task<IActionResult> Checkout(string voucherCode, string paymentMethod, bool usePoints = false)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-         
-            if (userId == null) return RedirectToAction("Login", "Users");
-            int userIdInt = int.Parse(userId);
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim))
+                return RedirectToAction("Login", "Users");
+
+            if (!int.TryParse(userIdClaim, out int userIdInt))
+                return RedirectToAction("Login", "Users");
 
             var user = await _context.Users.FirstOrDefaultAsync(u => u.UserID == userIdInt);
-            if (user == null) return RedirectToAction("Login", "Users");
+            if (user == null)
+                return RedirectToAction("Login", "Users");
 
             var cartItems = await _context.Carts
                 .Include(c => c.Product)
@@ -220,95 +238,122 @@ namespace weblamchoi.Controllers
                 return RedirectToAction("Index");
             }
 
-            decimal totalAmount = cartItems.Sum(item => item.Price.HasValue ? item.Price.Value * item.Quantity : (item.Product?.Price ?? 0m) * item.Quantity);
-            decimal discountAmount = 0;
-
-            Voucher voucher = null;
-            if (!string.IsNullOrEmpty(voucherCode))
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                voucher = await _context.Vouchers
-                    .Where(v => v.Code == voucherCode && v.IsActive && v.StartDate <= DateTime.Now && v.EndDate >= DateTime.Now)
-                    .FirstOrDefaultAsync();
+                // Tính tổng tiền
+                decimal totalAmount = cartItems.Sum(item =>
+                    (item.Price ?? item.Product?.Price ?? 0m) * item.Quantity);
 
-                if (voucher != null)
+                decimal discountAmount = 0;
+                Voucher voucher = null;
+
+                if (!string.IsNullOrEmpty(voucherCode))
                 {
+                    voucher = await _context.Vouchers
+                        .FirstOrDefaultAsync(v => v.Code == voucherCode
+                            && v.IsActive
+                            && v.StartDate <= DateTime.Now
+                            && v.EndDate >= DateTime.Now);
+
+                    if (voucher == null)
+                    {
+                        TempData["VoucherMessage"] = "Mã voucher không hợp lệ hoặc đã hết hạn.";
+                        return RedirectToAction("Index");
+                    }
+
                     discountAmount = voucher.IsPercentage
                         ? totalAmount * (voucher.DiscountAmount / 100m)
                         : Math.Min(voucher.DiscountAmount, totalAmount);
                 }
-                else
-                {
-                    TempData["VoucherMessage"] = "Mã voucher không hợp lệ hoặc đã hết hạn.";
-                    return RedirectToAction("Index");
-                }
-            }
 
-            var finalAmount = totalAmount - discountAmount;
+                decimal finalAmount = totalAmount - discountAmount;
 
-            // 🔹 Trừ điểm nếu chọn dùng
-            int pointsUsed = 0;
-            decimal pointValue = 0;
-            if (usePoints && user.Points > 0)
-            {
-                const decimal pointRate = 1000m; // 1 điểm = 1000 VNĐ
-                pointValue = user.Points * pointRate;
-
-                if (pointValue > finalAmount)
+                // Trừ điểm
+                int pointsUsed = 0;
+                decimal pointValue = 0;
+                if (usePoints && user.Points > 0)
                 {
-                    // chỉ dùng vừa đủ để thanh toán
-                    pointsUsed = (int)(finalAmount / pointRate);
-                    pointValue = pointsUsed * pointRate;
-                }
-                else
-                {
-                    pointsUsed = user.Points;
+                    const decimal pointRate = 1000m;
+                    pointValue = Math.Min(user.Points * pointRate, finalAmount);
+                    pointsUsed = (int)(pointValue / pointRate);
+                    finalAmount -= pointValue;
+                    user.Points -= pointsUsed;
+                    _context.Users.Update(user);
                 }
 
-                finalAmount -= pointValue;
-                user.Points -= pointsUsed;
-            }
+                // Tạo đơn hàng
+                var order = new Order
+                {
+                    UserID = userIdInt,
+                    OrderDate = DateTime.Now,
+                    Status = "Chờ xử lý",
+                    TotalAmount = finalAmount,
+                    VoucherCode = voucherCode
+                };
+                _context.Orders.Add(order);
+                await _context.SaveChangesAsync();
 
-            var order = new Order
-            {
-                UserID = userIdInt,
-                OrderDate = DateTime.Now,
-                Status = "Chờ xử lý",
-                TotalAmount = finalAmount,
-                VoucherCode = voucherCode
-            };
-            _context.Orders.Add(order);
-            await _context.SaveChangesAsync();
+                // Chi tiết đơn hàng
+                foreach (var item in cartItems)
+                {
+                    _context.OrderDetails.Add(new OrderDetail
+                    {
+                        OrderID = order.OrderID,
+                        ProductID = item.ProductID,
+                        Quantity = item.Quantity,
+                        UnitPrice = item.Price ?? item.Product?.Price ?? 0m
+                    });
+                }
 
-            foreach (var item in cartItems)
-            {
-                var detail = new OrderDetail
+                // Thanh toán
+                _context.Payments.Add(new Payment
                 {
                     OrderID = order.OrderID,
-                    ProductID = item.ProductID,
-                    Quantity = item.Quantity,
-                    UnitPrice = item.Price.HasValue ? item.Price.Value : (item.Product?.Price ?? 0m)
+                    PaymentMethod = paymentMethod,
+                    PaidAmount = finalAmount,
+                    PaymentDate = DateTime.Now
+                });
+
+                // Xóa giỏ hàng
+                _context.Carts.RemoveRange(cartItems);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync(); // CAM KẾT GIAO DỊCH
+
+                // GỬI THÔNG BÁO CHO ADMIN (SAU KHI COMMIT)
+                var notification = new Notification
+                {
+                    UserID = null,  // Admin notification
+                    Message = $"[ĐƠN MỚI] #{order.OrderID} - {user.FullName}",
+                    Link = $"/Orders/Details/{order.OrderID}",
+                    IsRead = false,  // ✅ LUÔN = false
+                    OrderID = order.OrderID
                 };
-                _context.OrderDetails.Add(detail);
+
+                _context.Notifications.Add(notification);
+                await _context.SaveChangesAsync();
+
+                // GỬI REAL-TIME CHO ADMIN
+                await _hubContext.Clients.Group("Admins").SendAsync(
+                    "ReceiveOrderNotification",
+                    notification.Message,
+                    notification.Link,
+                    notification.NotificationId
+                );
+
+                TempData["SuccessMessage"] = $"Thanh toán thành công! Mã đơn hàng: <strong>#{order.OrderID}</strong>. " +
+                                  (pointsUsed > 0 ? $"Bạn đã dùng {pointsUsed} điểm (trị giá {pointValue:N0}đ)." : "");
+
+                return RedirectToAction("Index"); // Quay lại giỏ hàng
             }
-
-            var payment = new Payment
+            catch (Exception ex)
             {
-                OrderID = order.OrderID,
-                PaymentMethod = paymentMethod,
-                PaidAmount = finalAmount,
-                PaymentDate = DateTime.Now
-            };
-            _context.Payments.Add(payment);
-
-            _context.Carts.RemoveRange(cartItems);
-
-            await _context.SaveChangesAsync();
-
-            TempData["Message"] = $"Thanh toán thành công! {(pointsUsed > 0 ? $"Bạn đã dùng {pointsUsed} điểm (trị giá {pointValue:N0}đ)." : "")}";
-            return RedirectToAction("Index", "Home");
+                await transaction.RollbackAsync();
+                TempData["ErrorMessage"] = $"Có lỗi xảy ra: {ex.Message}";
+                return RedirectToAction("Index");
+            }
         }
-
-
         [HttpPost]
         public async Task<IActionResult> CheckoutOnline(string voucherCode = null, bool usePoints = false)
         {
@@ -383,7 +428,7 @@ namespace weblamchoi.Controllers
             {
                 UserID = userIdInt,
                 OrderDate = DateTime.Now,
-                Status = "Pending",
+                Status = "Chờ xử lý",
                 TotalAmount = amountAfterDiscount,
                 VoucherCode = voucherCode,
                 OrderDetails = cartItems.Select(c => new OrderDetail
@@ -411,8 +456,7 @@ namespace weblamchoi.Controllers
             var notification = new Notification
             {
                 Message = $"Khách hàng {user.FullName} vừa tạo đơn hàng #{order.OrderID}, chờ thanh toán online",
-                Link = $"/Orders/Details/{order.OrderID}",
-                Type = "PendingOrder",
+                Link = $"/Orders/Details/{order.OrderID}", // XÓA /Admin/                Type = "PendingOrder",
                 CreatedAt = DateTime.Now,
                 IsRead = false,
                 OrderID = order.OrderID
@@ -426,10 +470,11 @@ namespace weblamchoi.Controllers
 
             // 🔹 Gửi real-time cho admin
             await _hubContext.Clients.Group("Admins").SendAsync(
-                "ReceiveOrderNotification",
-                notification.Message,
-                order.OrderID
-            );
+               "ReceiveOrderNotification",
+               notification.Message,
+               notification.Link,      // ✅ "/Orders/Details/{order.OrderID}"
+               notification.NotificationId  // ✅ ID từ DB
+           );
 
             // 🔹 Redirect sang VNPAY
             return RedirectToAction(
@@ -479,6 +524,8 @@ namespace weblamchoi.Controllers
         public IActionResult RemoveVoucher()
         {
             TempData.Remove("VoucherCode");
+            ViewBag.DiscountAmount = 0m; // Reset discount
+            ViewBag.VoucherCode = null;  // Reset voucher code
             TempData["VoucherMessage"] = "Đã bỏ mã voucher.";
             return RedirectToAction("Index");
         }

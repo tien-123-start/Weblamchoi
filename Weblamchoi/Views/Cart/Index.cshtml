@@ -1,22 +1,38 @@
 ﻿@model List<weblamchoi.Models.Cart>
 
 @{
-    var totalAmount = ViewBag.TotalAmount ?? 0m;
-    var discountAmount = ViewBag.DiscountAmount ?? 0m;
-    var totalAfterDiscount = ViewBag.TotalAfterDiscount ?? totalAmount;
-    var voucherCode = ViewData["AppliedVoucherCode"] as string;
+    var totalAmount = ViewBag.TotalAmount ?? 0m; // Default to 0m if null
+    var discountAmount = ViewBag.DiscountAmount ?? 0m; // Default to 0m if null
+    var totalAfterDiscount = ViewBag.TotalAfterDiscount ?? totalAmount; // Default to totalAmount if null
+    var voucherCode = ViewData["AppliedVoucherCode"] as string ?? string.Empty; // Default to empty string if null
 
-    // Lấy discount % (nếu có) từ ViewBag hoặc model
+    // Lấy discount % (nếu có) từ ViewBag hoặc model, mặc định 0m
     decimal discountPercentage = ViewBag.DiscountPercentage ?? 0m;
 
     // Tách sản phẩm chính (có BonusProduct) và sản phẩm khuyến mãi
-    var mainProducts = Model.Where(c => c.Product != null && c.Product.BonusProduct != null).ToList();
-    var bonusProducts = Model.Where(c => c.Product != null && Model.Any(mp => mp.Product?.BonusProduct?.ProductID == c.ProductID)).ToList();
-    var standaloneProducts = Model.Except(mainProducts).Except(bonusProducts).ToList(); // Sản phẩm không liên quan
+    var mainProducts = Model?.Where(c => c.Product != null && c.Product.BonusProduct != null).ToList() ?? new List<Cart>();
+    var bonusProducts = Model?.Where(c => c.Product != null && Model.Any(mp => mp.Product?.BonusProduct?.ProductID == c.ProductID)).ToList() ?? new List<Cart>();
+    var standaloneProducts = Model?.Except(mainProducts).Except(bonusProducts).ToList() ?? new List<Cart>(); // Sản phẩm không liên quan
 }
 
 <link rel="stylesheet" href="/css/cart.css">
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show text-center" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>
+        @Html.Raw(TempData["SuccessMessage"])
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
 
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show text-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
 <div class="page-header">
     <h2><i class="bi bi-cart3"></i> Giỏ hàng của bạn</h2>
 </div>
@@ -68,13 +84,13 @@
                             <td>
                                 <form method="post" asp-action="UpdateQuantity" class="quantity-controls">
                                     <input type="hidden" name="cartId" value="@mainItem.CartID" />
-                                    <button type="submit" name="action" value="decrease" class="quantity-btn">−</button>
+                                    <button type="submit" name="action" value="decrease" class="quantity-btn" @(mainItem.Quantity <= 1 ? "disabled" : "")>−</button>
                                     <div class="quantity-display">@mainItem.Quantity</div>
                                     <button type="submit" name="action" value="increase" class="quantity-btn">+</button>
                                 </form>
                             </td>
                             <td>
-                                <div class="product-price">@((mainItem.Price.HasValue ? (mainItem.Price.Value * mainItem.Quantity) : (mainItem.Product.Price * mainItem.Quantity)).ToString("N0")) ₫</div>
+                                <div class="product-price">@((mainItem.Price.HasValue ? mainItem.Price.Value * mainItem.Quantity : mainItem.Product.Price * mainItem.Quantity).ToString("N0")) ₫</div>
                             </td>
                             <td>
                                 <form asp-action="Remove" method="post">
@@ -106,7 +122,7 @@
                                     <div class="quantity-display">@relatedBonus.Quantity</div>
                                 </td>
                                 <td>
-                                    <div class="product-price">@((relatedBonus.Price.HasValue ? (relatedBonus.Price.Value * relatedBonus.Quantity) : (relatedBonus.Product.Price * relatedBonus.Quantity)).ToString("N0")) ₫</div>
+                                    <div class="product-price">@((relatedBonus.Price.HasValue ? relatedBonus.Price.Value * relatedBonus.Quantity : relatedBonus.Product.Price * relatedBonus.Quantity).ToString("N0")) ₫</div>
                                 </td>
                                 <td>
                                     <!-- Không có nút xóa riêng cho sản phẩm khuyến mãi -->
@@ -138,13 +154,13 @@
                             <td>
                                 <form method="post" asp-action="UpdateQuantity" class="quantity-controls">
                                     <input type="hidden" name="cartId" value="@item.CartID" />
-                                    <button type="submit" name="action" value="decrease" class="quantity-btn">−</button>
+                                    <button type="submit" name="action" value="decrease" class="quantity-btn" @(item.Quantity <= 1 ? "disabled" : "")>−</button>
                                     <div class="quantity-display">@item.Quantity</div>
                                     <button type="submit" name="action" value="increase" class="quantity-btn">+</button>
                                 </form>
                             </td>
                             <td>
-                                <div class="product-price">@((item.Price.HasValue ? (item.Price.Value * item.Quantity) : (item.Product.Price * item.Quantity)).ToString("N0")) ₫</div>
+                                <div class="product-price">@((item.Price.HasValue ? item.Price.Value * item.Quantity : item.Product.Price * item.Quantity).ToString("N0")) ₫</div>
                             </td>
                             <td>
                                 <form asp-action="Remove" method="post">
@@ -168,7 +184,7 @@
         <span>Tổng tiền</span>
         <strong>@totalAmount.ToString("N0") ₫</strong>
     </div>
-    @if ((decimal)discountAmount > 0)
+    @if (discountAmount > 0)
     {
         <div class="summary-row discount">
             <span>Giảm giá (Voucher)</span>
@@ -182,8 +198,6 @@
         </label>
     </div>
     <input type="hidden" id="usePointsInput" name="usePoints" value="0" />
-
-
 
     <div class="summary-row total">
         <span>Tổng thanh toán</span>
@@ -200,8 +214,8 @@
 <div class="voucher-section">
     <h4><i class="bi bi-ticket-perforated"></i> Mã giảm giá</h4>
     <form method="post" asp-action="ApplyVoucher" class="d-flex align-items-center gap-2">
-        <input type="text" name="voucherCode" class="form-control voucher-input" placeholder="Nhập mã giảm giá" value="@voucherCode" @(voucherCode != null ? "readonly" : "") />
-        <button type="submit" class="voucher-btn" @(voucherCode != null ? "disabled" : "")>Áp dụng</button>
+        <input type="text" name="voucherCode" class="form-control voucher-input" placeholder="Nhập mã giảm giá" value="@voucherCode" @(string.IsNullOrEmpty(voucherCode) ? "" : "readonly") />
+        <button type="submit" class="voucher-btn" @(string.IsNullOrEmpty(voucherCode) ? "" : "disabled")>Áp dụng</button>
     </form>
     @if (!string.IsNullOrEmpty(voucherCode))
     {
@@ -227,7 +241,6 @@
             <i class="bi bi-exclamation-triangle"></i> @TempData["VoucherError"]
         </div>
     }
-
 </div>
 
 <div class="payment-section">
@@ -301,23 +314,25 @@
             });
         }
 
-        // -----------------------------
-        // Tính tổng thanh toán khi dùng điểm
+        // 💰 Tính tổng thanh toán khi dùng điểm
         const usePointsCheckbox = document.getElementById('usePointsCheckbox');
         const totalDisplay = document.querySelector('.summary-row.total strong');
-        const totalAfterDiscount = @totalAfterDiscount; // tổng sau voucher
-        const userPoints = @ViewBag.UserPoints ?? 0; // điểm tích lũy
+        const totalAfterDiscountValue = parseFloat("@(totalAfterDiscount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))") || 0; // Use F2 for decimal precision
+        const userPoints = parseInt("@(ViewBag.UserPoints ?? 0)", 10) || 0;
         const usePointsInput = document.getElementById('usePointsInput');
 
         if (usePointsCheckbox) {
-            usePointsCheckbox.addEventListener('change', function() {
-                let newTotal = totalAfterDiscount;
-                if (this.checked) {
-                    newTotal = Math.max(totalAfterDiscount - userPoints, 0);
+            usePointsCheckbox.addEventListener('change', function () {
+                let newTotal = totalAfterDiscountValue;
+                const pointValue = userPoints * 1000; // 1 điểm = 1.000₫
+
+                if (this.checked && pointValue > 0) {
+                    newTotal = Math.max(totalAfterDiscountValue - pointValue, 0);
                     usePointsInput.value = "1";
                 } else {
                     usePointsInput.value = "0";
                 }
+
                 totalDisplay.textContent = newTotal.toLocaleString('vi-VN') + ' ₫';
             });
         }
