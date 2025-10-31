@@ -225,7 +225,8 @@
     if (document.readyState === 'loading') {
       // add listener on the first call when the document is in loading state
       if (!DOMContentLoadedCallbacks.length) {
-        document.addEventListener('DOMContentLoaded', () => {
+          document.addEventListener('DOMContentLoaded', () => {
+          initMap(); // ĐẢM BẢO MAP TỒN TẠI TRƯỚC KHI DÙNG
           DOMContentLoadedCallbacks.forEach(callback => callback());
         });
       }

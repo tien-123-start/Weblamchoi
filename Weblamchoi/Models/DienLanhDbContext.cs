@@ -23,6 +23,7 @@ namespace weblamchoi.Models
         public DbSet<Contact> Contacts { get; set; }
         public DbSet<BonusProduct> BonusProducts { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<UserVoucher> UserVouchers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

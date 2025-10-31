@@ -63,7 +63,7 @@ namespace weblamchoi.Controllers.Admin
         }
 
         // ========== HỒ SƠ NGƯỜI DÙNG ==========
-        public IActionResult Profile()
+        public async Task<IActionResult> ProfileAsync(int? categoryId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return RedirectToAction("Index", "Login");
@@ -84,6 +84,8 @@ namespace weblamchoi.Controllers.Admin
                 Points = user.Points
             };
             ViewBag.UserPoints = user.Points;
+            ViewBag.SelectedCategoryId = categoryId;
+            ViewBag.Categories = await _context.Categories.ToListAsync();
 
             return View(model);
         }

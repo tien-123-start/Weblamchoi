@@ -3,8 +3,11 @@
 @{
     ViewData["Title"] = $"Chi tiết đơn hàng #{Model.OrderID}";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
-}
 
+    // Hàm format tiền chuẩn VND
+    Func<decimal?, string> formatVND = (amount) =>
+        amount.HasValue ? $"{amount.Value:N0} ₫" : "0 ₫";
+}
 @if (ViewBag.IsDeleted == true)
 {
     <div class="alert alert-warning">
@@ -12,93 +15,175 @@
         <strong>Đơn hàng này đã bị đánh dấu xóa.</strong> Không hiển thị ở danh sách.
     </div>
 }
+<h3 class="mb-4">Chi tiết đơn hàng #@Model.OrderID</h3>
 
-<h3>Chi tiết đơn hàng #@Model.OrderID</h3>
-<hr />
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Thông tin khách hàng</h5>
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Khách hàng:</dt>
+            <dd class="col-sm-9">@(Model.User?.FullName ?? "Không có thông tin")</dd>
+            <dt class="col-sm-3">SĐT:</dt>
+            <dd class="col-sm-9">@(Model.User?.Phone ?? "N/A")</dd>
+            <dt class="col-sm-3">Địa chỉ:</dt>
+            <dd class="col-sm-9">@(Model.User?.Address ?? "N/A")</dd>
+            <dt class="col-sm-3">Ngày đặt:</dt>
+            <dd class="col-sm-9">@Model.OrderDate.ToString("dd/MM/yyyy HH:mm")</dd>
+            <dt class="col-sm-3">Trạng thái:</dt>
+            <dd class="col-sm-9">
+                <span class="badge @(Model.Status == "Thành công" ? "bg-success" :
+                                                         Model.Status == "Đã hủy" ? "bg-danger" :
+                                                         Model.Status == "Chờ xử lý" ? "bg-warning" : "bg-primary")">
+                    @(Model.Status ?? "Chưa xác định")
+                </span>
+            </dd>
+        </dl>
+    </div>
+</div>
 
-<div class="mb-4">
-    <dl class="row">
-        <dt class="col-sm-3">Khách hàng:</dt>
-        <dd class="col-sm-9">@(Model.User?.FullName ?? "Không có thông tin")</dd>
-        <dt class="col-sm-3">SĐT:</dt>
-        <dd class="col-sm-9">@(Model.User?.Phone ?? "N/A")</dd>
-        <dt class="col-sm-3">Địa chỉ:</dt>
-        <dd class="col-sm-9">@(Model.User?.Address ?? "N/A")</dd>
-        <dt class="col-sm-3">Ngày đặt:</dt>
-        <dd class="col-sm-9">@Model.OrderDate.ToString("dd/MM/yyyy HH:mm")</dd>
-        <dt class="col-sm-3">Trạng thái:</dt>
-        <dd class="col-sm-9">@(Model.Status ?? "Chưa xác định")</dd>
-        <dt class="col-sm-3">Giao hàng:</dt>
-        <dd class="col-sm-9">@(Model.Shipping?.ShippingAddress ?? "N/A")</dd>
-        <dt class="col-sm-3">Thanh toán:</dt>
-        <dd class="col-sm-9">@(Model.Payment?.PaymentMethod ?? "N/A")</dd>
-    </dl>
-
-    <!-- FORM CẬP NHẬT TRẠNG THÁI -->
-    <form asp-controller="Orders" asp-action="UpdateStatus" method="post" class="mt-3">
-        <input type="hidden" name="orderId" value="@Model.OrderID" />
-        <div class="mb-3">
-            <label for="newStatus" class="form-label fw-bold">Cập nhật trạng thái:</label>
-            <select name="newStatus" id="newStatus" class="form-select w-auto">
-                @foreach (var status in new[] { "Chờ xử lý", "Đã xác nhận", "Đang chuyển hàng", "Đang giao hàng", "Thành công", "Đã hủy" })
-                {
-                    <option value="@status" selected="@(Model.Status == status)">@status</option>
-                }
-            </select>
+<div class="row">
+    <!-- CẬP NHẬT TRẠNG THÁI -->
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-title">Cập nhật trạng thái</h6>
+                <form asp-controller="Orders" asp-action="UpdateStatus" method="post">
+                    <input type="hidden" name="orderId" value="@Model.OrderID" />
+                    <div class="mb-2">
+                        <select name="newStatus" id="newStatus" class="form-select">
+                            @foreach (var status in new[] { "Chờ xử lý", "Đã xác nhận", "Đang chuyển hàng", "Đang giao hàng", "Thành công", "Đã hủy" })
+                            {
+                                <option value="@status" selected="@(Model.Status == status)">@status</option>
+                            }
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success btn-sm">Lưu trạng thái</button>
+                </form>
+            </div>
         </div>
-        <button type="submit" class="btn btn-success btn-sm">Lưu trạng thái</button>
-    </form>
+    </div>
 
-    <!-- FORM ĐÁNH DẤU XÓA (TÁCH RIÊNG) -->
-    <form asp-action="DeleteConfirmed" asp-controller="Orders" asp-route-orderId="@Model.OrderID" method="post" class="mt-2">
-        <button type="submit" class="btn btn-danger btn-sm">Đánh dấu xóa</button>
-    </form>
+    <!-- ĐÁNH DẤU XÓA -->
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-title">Quản lý đơn hàng</h6>
+                <form asp-action="DeleteConfirmed" asp-controller="Orders" asp-route-orderId="@Model.OrderID" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Đánh dấu xóa đơn hàng này?')">Đánh dấu xóa</button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
-<h5>Sản phẩm trong đơn hàng:</h5>
-<table class="table table-bordered">
-    <thead class="table-light">
-        <tr>
-            <th>Sản phẩm</th>
-            <th>Số lượng</th>
-            <th>Giá</th>
-            <th>Thành tiền</th>
-        </tr>
-    </thead>
-    <tbody>
-        @if (Model.OrderDetails == null || !Model.OrderDetails.Any())
-        {
-            <tr>
-                <td colspan="4" class="text-center">Không có sản phẩm trong đơn hàng</td>
-            </tr>
-        }
-        else
-        {
-            @foreach (var item in Model.OrderDetails)
-            {
-                <tr>
-                    <td>@(item.Product?.ProductName ?? "N/A")</td>
-                    <td>@item.Quantity</td>
-                    <td>@item.UnitPrice.ToString("C", new CultureInfo("vi-VN"))</td>
-                    <td>@((item.Quantity * item.UnitPrice).ToString("C", new CultureInfo("vi-VN")))</td>
-                </tr>
-            }
-        }
-    </tbody>
-</table>
-
-<div class="text-end">
-    <strong>Tổng cộng:</strong>
-    <span class="text-danger fs-5 fw-bold">
-        @(Model.TotalAmount?.ToString("C", new CultureInfo("vi-VN")) ?? "0 ₫")
-    </span>
+<!-- THÔNG TIN GIAO HÀNG & VOUCHER -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title">Giao hàng</h6>
+                <p class="mb-1"><strong>Địa chỉ:</strong> @(Model.Shipping?.ShippingAddress ?? "N/A")</p>
+                <p class="mb-1">
+                    <strong>Phí vận chuyển:</strong>
+                    <span class="text-success fw-bold">@formatVND(Model.Shipping?.ShippingFee)</span>
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title">Mã giảm giá</h6>
+                @if (!string.IsNullOrEmpty(Model.VoucherCode))
+                {
+                    <p class="mb-0"><strong>Mã:</strong> <span class="badge bg-info">@Model.VoucherCode</span></p>
+                }
+                else
+                {
+                    <p class="mb-0 text-muted">Không sử dụng voucher</p>
+                }
+            </div>
+        </div>
+    </div>
 </div>
 
-<a asp-controller="Orders"
-   asp-action="Index"
-   class="btn btn-secondary mt-3">
-    Quay lại danh sách
-</a>
+<!-- DANH SÁCH SẢN PHẨM -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Sản phẩm trong đơn hàng</h5>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Sản phẩm</th>
+                        <th class="text-center">Số lượng</th>
+                        <th class="text-end">Đơn giá</th>
+                        <th class="text-end">Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.OrderDetails == null || !Model.OrderDetails.Any())
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">Không có sản phẩm</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Model.OrderDetails)
+                        {
+                            var total = item.Quantity * item.UnitPrice;
+                            <tr>
+                                <td>@(item.Product?.ProductName ?? "N/A")</td>
+                                <td class="text-center">@item.Quantity</td>
+                                <td class="text-end">@formatVND(item.UnitPrice)</td>
+                                <td class="text-end fw-bold">@formatVND(total)</td>
+                            </tr>
+                        }
+                        <!-- DÒNG TỔNG TIỀN HÀNG -->
+                        <tr class="table-secondary">
+                            <td colspan="3" class="text-end fw-bold">Tổng tiền hàng:</td>
+                            <td class="text-end fw-bold">@formatVND(Model.OrderDetails.Sum(od => od.Quantity * od.UnitPrice))</td>
+                        </tr>
+                        <!-- DÒNG GIẢM GIÁ -->
+                        @if (!string.IsNullOrEmpty(Model.VoucherCode))
+                        {
+                            var totalBeforeDiscount = Model.OrderDetails.Sum(od => od.Quantity * od.UnitPrice);
+                            var discount = totalBeforeDiscount + (Model.Shipping?.ShippingFee ?? 0) - (Model.TotalAmount ?? 0);
+                            if (discount > 0)
+                            {
+                                <tr class="table-success">
+                                    <td colspan="3" class="text-end fw-bold text-success">Giảm giá (@Model.VoucherCode):</td>
+                                    <td class="text-end fw-bold text-success">−@formatVND(discount)</td>
+                                </tr>
+                            }
+                        }
+                        <!-- DÒNG PHÍ SHIP -->
+                        @if (Model.Shipping?.ShippingFee > 0)
+                        {
+                            <tr class="table-info">
+                                <td colspan="3" class="text-end fw-bold">Phí vận chuyển:</td>
+                                <td class="text-end fw-bold text-primary">@formatVND(Model.Shipping.ShippingFee)</td>
+                            </tr>
+                        }
+                        <!-- DÒNG TỔNG THANH TOÁN -->
+                        <tr class="table-dark">
+                            <td colspan="3" class="text-end fw-bold fs-5">TỔNG THANH TOÁN:</td>
+                            <td class="text-end fw-bold text-danger fs-5">@formatVND(Model.TotalAmount)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- NÚT QUAY LẠI -->
+<div class="text-center">
+    <a asp-controller="Orders" asp-action="Index" class="btn btn-secondary px-4">
+        <i class="bi bi-arrow-left"></i> Quay lại danh sách
+    </a>
+</div>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -109,22 +194,19 @@
                     <text>
                     Swal.fire({
                         icon: 'success',
-                        title: 'Thành công',
-                        text: '@TempData["SuccessMessage"]',
-                        confirmButtonText: 'OK',
+                        title: 'Thành công!',
+                        text: '@Html.Raw(TempData["SuccessMessage"])',
                         confirmButtonColor: '#28a745'
                     });
                     </text>
             }
-
             @if (TempData["ErrorMessage"] != null)
             {
                     <text>
                     Swal.fire({
                         icon: 'error',
-                        title: 'Lỗi cập nhật trạng thái',
-                        text: '@TempData["ErrorMessage"]',
-                        confirmButtonText: 'OK',
+                        title: 'Lỗi!',
+                        text: '@Html.Raw(TempData["ErrorMessage"])',
                         confirmButtonColor: '#dc3545'
                     });
                     </text>

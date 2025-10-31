@@ -1,340 +1,493 @@
 ﻿@model List<weblamchoi.Models.Cart>
+@using System.Globalization
 
 @{
-    var totalAmount = ViewBag.TotalAmount ?? 0m; // Default to 0m if null
-    var discountAmount = ViewBag.DiscountAmount ?? 0m; // Default to 0m if null
-    var totalAfterDiscount = ViewBag.TotalAfterDiscount ?? totalAmount; // Default to totalAmount if null
-    var voucherCode = ViewData["AppliedVoucherCode"] as string ?? string.Empty; // Default to empty string if null
+    var vi = new CultureInfo("vi-VN");
+    var totalAmount = ViewBag.TotalAmount ?? 0m;
+    var discountAmount = ViewBag.DiscountAmount ?? 0m;
+    var totalAfterDiscount = ViewBag.TotalAfterDiscount ?? totalAmount;
+    var voucherCode = ViewData["AppliedVoucherCode"] as string ?? string.Empty;
+    var userPoints = ViewBag.UserPoints ?? 0;
+    var mainProducts = Model?.Where(c => c.Product?.BonusProduct != null).ToList() ?? new List<Cart>();
+    var bonusProductIds = mainProducts.Select(m => m.Product.BonusProduct.ProductID).ToHashSet();
+    var bonusProducts = Model?.Where(c => bonusProductIds.Contains(c.ProductID)).ToList() ?? new List<Cart>();
+    var standaloneProducts = Model?.Except(mainProducts).Except(bonusProducts).ToList() ?? new List<Cart>();
 
-    // Lấy discount % (nếu có) từ ViewBag hoặc model, mặc định 0m
-    decimal discountPercentage = ViewBag.DiscountPercentage ?? 0m;
-
-    // Tách sản phẩm chính (có BonusProduct) và sản phẩm khuyến mãi
-    var mainProducts = Model?.Where(c => c.Product != null && c.Product.BonusProduct != null).ToList() ?? new List<Cart>();
-    var bonusProducts = Model?.Where(c => c.Product != null && Model.Any(mp => mp.Product?.BonusProduct?.ProductID == c.ProductID)).ToList() ?? new List<Cart>();
-    var standaloneProducts = Model?.Except(mainProducts).Except(bonusProducts).ToList() ?? new List<Cart>(); // Sản phẩm không liên quan
+    // HÀM FORMAT TIỀN CHUẨN VND
+    Func<decimal?, string> formatCurrency = (price) =>
+        price.HasValue ? $"{price.Value:N0} ₫" : "0 ₫";
 }
 
-<link rel="stylesheet" href="/css/cart.css">
-@if (TempData["SuccessMessage"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show text-center" role="alert">
-        <i class="bi bi-check-circle-fill me-2"></i>
-        @Html.Raw(TempData["SuccessMessage"])
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <title>Giỏ hàng - Điện Máy Xanh</title>
+    <link rel="stylesheet" href="/css/cart.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 
-@if (TempData["ErrorMessage"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show text-center" role="alert">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-        @TempData["ErrorMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
-<div class="page-header">
-    <h2><i class="bi bi-cart3"></i> Giỏ hàng của bạn</h2>
-</div>
+</head>
+<body>
 
-<div class="cart-container">
-    @if (Model == null || !Model.Any())
-    {
-        <div class="empty-cart">
-            <i class="bi bi-cart-x"></i>
-            <h3>Giỏ hàng trống</h3>
-            <p>Bạn chưa có sản phẩm nào trong giỏ hàng.</p>
-            <a href="/Home/Index" class="btn btn-primary">
-                <i class="bi bi-arrow-left"></i> Tiếp tục mua sắm
-            </a>
-        </div>
-    }
-    else
-    {
-        <table class="table modern-table">
-            <thead>
-                <tr>
-                    <th><i class="bi bi-box"></i> Sản phẩm</th>
-                    <th><i class="bi bi-tag"></i> Giá</th>
-                    <th><i class="bi bi-123"></i> Số lượng</th>
-                    <th><i class="bi bi-calculator"></i> Thành tiền</th>
-                    <th><i class="bi bi-trash"></i> Xóa</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Hiển thị sản phẩm chính và sản phẩm khuyến mãi liên quan -->
-                @foreach (var mainItem in mainProducts)
-                {
-                    if (mainItem?.Product != null)
-                    {
-                        <tr>
-                            <td>
-                                <div class="product-info-vertical">
-                                    <img src="@(string.IsNullOrEmpty(mainItem.Product.ImageURL) ? "/images/default.png" : mainItem.Product.ImageURL)" class="product-image" alt="@mainItem.Product.ProductName" />
-                                    <div class="product-name">@mainItem.Product.ProductName</div>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="product-price">
-                                    <del>@mainItem.Product.Price.ToString("N0") ₫</del>
-                                    <br />
-                                    <strong>@(mainItem.Price.HasValue? mainItem.Price.Value.ToString("N0") : mainItem.Product.Price.ToString("N0")) ₫</strong>
-                                </div>
-                            </td>
-                            <td>
-                                <form method="post" asp-action="UpdateQuantity" class="quantity-controls">
-                                    <input type="hidden" name="cartId" value="@mainItem.CartID" />
-                                    <button type="submit" name="action" value="decrease" class="quantity-btn" @(mainItem.Quantity <= 1 ? "disabled" : "")>−</button>
-                                    <div class="quantity-display">@mainItem.Quantity</div>
-                                    <button type="submit" name="action" value="increase" class="quantity-btn">+</button>
-                                </form>
-                            </td>
-                            <td>
-                                <div class="product-price">@((mainItem.Price.HasValue ? mainItem.Price.Value * mainItem.Quantity : mainItem.Product.Price * mainItem.Quantity).ToString("N0")) ₫</div>
-                            </td>
-                            <td>
-                                <form asp-action="Remove" method="post">
-                                    <input type="hidden" name="cartId" value="@mainItem.CartID" />
-                                    <button type="submit" class="remove-btn" onclick="return confirm('Bạn có chắc muốn xóa sản phẩm này?')">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
+    <div class="container py-4">
+        <div class="page-header text-center mb-4"><h2>Giỏ hàng của bạn</h2></div>
 
-                        <!-- Hiển thị sản phẩm khuyến mãi liên quan ngay bên dưới -->
-                        var relatedBonus = bonusProducts.FirstOrDefault(b => b.ProductID == mainItem.Product.BonusProduct?.ProductID);
-                        if (relatedBonus != null)
-                        {
-                            <tr class="bonus-product-row">
-                                <td>
-                                    <div class="product-info-vertical">
-                                        <img src="@(string.IsNullOrEmpty(relatedBonus.Product.ImageURL) ? "/images/default.png" : relatedBonus.Product.ImageURL)" class="product-image" alt="@relatedBonus.Product.ProductName" />
-                                        <div class="product-name">
-                                            @relatedBonus.Product.ProductName <span class="badge bg-success">Khuyến mãi</span>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="product-price">@(relatedBonus.Price.HasValue? relatedBonus.Price.Value.ToString("N0") : relatedBonus.Product.Price.ToString("N0")) ₫</div>
-                                </td>
-                                <td>
-                                    <div class="quantity-display">@relatedBonus.Quantity</div>
-                                </td>
-                                <td>
-                                    <div class="product-price">@((relatedBonus.Price.HasValue ? relatedBonus.Price.Value * relatedBonus.Quantity : relatedBonus.Product.Price * relatedBonus.Quantity).ToString("N0")) ₫</div>
-                                </td>
-                                <td>
-                                    <!-- Không có nút xóa riêng cho sản phẩm khuyến mãi -->
-                                </td>
-                            </tr>
-                        }
-                    }
-                }
-
-                <!-- Hiển thị các sản phẩm độc lập (không có khuyến mãi) -->
-                @foreach (var item in standaloneProducts)
-                {
-                    if (item?.Product != null)
-                    {
-                        <tr>
-                            <td>
-                                <div class="product-info-vertical">
-                                    <img src="@(string.IsNullOrEmpty(item.Product.ImageURL) ? "/images/default.png" : item.Product.ImageURL)" class="product-image" alt="@item.Product.ProductName" />
-                                    <div class="product-name">@item.Product.ProductName</div>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="product-price">
-                                    <del>@item.Product.Price.ToString("N0") ₫</del>
-                                    <br />
-                                    <strong>@(item.Price.HasValue? item.Price.Value.ToString("N0") : item.Product.Price.ToString("N0")) ₫</strong>
-                                </div>
-                            </td>
-                            <td>
-                                <form method="post" asp-action="UpdateQuantity" class="quantity-controls">
-                                    <input type="hidden" name="cartId" value="@item.CartID" />
-                                    <button type="submit" name="action" value="decrease" class="quantity-btn" @(item.Quantity <= 1 ? "disabled" : "")>−</button>
-                                    <div class="quantity-display">@item.Quantity</div>
-                                    <button type="submit" name="action" value="increase" class="quantity-btn">+</button>
-                                </form>
-                            </td>
-                            <td>
-                                <div class="product-price">@((item.Price.HasValue ? item.Price.Value * item.Quantity : item.Product.Price * item.Quantity).ToString("N0")) ₫</div>
-                            </td>
-                            <td>
-                                <form asp-action="Remove" method="post">
-                                    <input type="hidden" name="cartId" value="@item.CartID" />
-                                    <button type="submit" class="remove-btn" onclick="return confirm('Bạn có chắc muốn xóa sản phẩm này?')">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                    }
-                }
-            </tbody>
-        </table>
-    }
-</div>
-
-<div class="summary-section">
-    <h4><i class="bi bi-receipt"></i> Tóm tắt đơn hàng</h4>
-    <div class="summary-row">
-        <span>Tổng tiền</span>
-        <strong>@totalAmount.ToString("N0") ₫</strong>
-    </div>
-    @if (discountAmount > 0)
-    {
-        <div class="summary-row discount">
-            <span>Giảm giá (Voucher)</span>
-            <strong>-@discountAmount.ToString("N0") ₫</strong>
-        </div>
-    }
-
-    <div class="summary-row use-points">
-        <label>
-            <input type="checkbox" id="usePointsCheckbox" value="1" /> Sử dụng điểm tích lũy (@(ViewBag.UserPoints ?? 0) điểm)
-        </label>
-    </div>
-    <input type="hidden" id="usePointsInput" name="usePoints" value="0" />
-
-    <div class="summary-row total">
-        <span>Tổng thanh toán</span>
-        <strong>@totalAfterDiscount.ToString("N0") ₫</strong>
-    </div>
-</div>
-
-<div class="mt-3">
-    <a href="/Home/Index" class="home-link">
-        <i class="bi bi-arrow-left"></i> Về trang chủ
-    </a>
-</div>
-
-<div class="voucher-section">
-    <h4><i class="bi bi-ticket-perforated"></i> Mã giảm giá</h4>
-    <form method="post" asp-action="ApplyVoucher" class="d-flex align-items-center gap-2">
-        <input type="text" name="voucherCode" class="form-control voucher-input" placeholder="Nhập mã giảm giá" value="@voucherCode" @(string.IsNullOrEmpty(voucherCode) ? "" : "readonly") />
-        <button type="submit" class="voucher-btn" @(string.IsNullOrEmpty(voucherCode) ? "" : "disabled")>Áp dụng</button>
-    </form>
-    @if (!string.IsNullOrEmpty(voucherCode))
-    {
-        <div class="applied-voucher">
-            <div class="d-flex align-items-center">
-                <i class="bi bi-check-circle-fill me-2"></i>
-                <strong>Đã áp dụng: @voucherCode</strong>
+        <!-- THÔNG BÁO -->
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show text-center" role="alert">
+                @Html.Raw(TempData["SuccessMessage"])
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
-            <form method="post" asp-action="RemoveVoucher" class="d-inline">
-                <button type="submit" class="remove-voucher-btn">Bỏ</button>
-            </form>
-        </div>
-    }
-    @if (TempData["VoucherMessage"] != null)
-    {
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i> @TempData["VoucherMessage"]
-        </div>
-    }
-    @if (TempData["VoucherError"] != null)
-    {
-        <div class="alert alert-danger">
-            <i class="bi bi-exclamation-triangle"></i> @TempData["VoucherError"]
-        </div>
-    }
-</div>
+        }
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show text-center" role="alert">
+                @TempData["ErrorMessage"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+        @if (TempData["VoucherError"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show text-center" role="alert">
+                @TempData["VoucherError"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+        @if (TempData["ShippingError"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show text-center" role="alert">
+                @TempData["ShippingError"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
 
-<div class="payment-section">
-    <h4><i class="bi bi-credit-card"></i> Phương thức thanh toán</h4>
-    <div class="row mt-3">
-        <div class="col-md-6 d-flex">
-            <div class="payment-card online flex-fill">
-                <h5><i class="bi bi-credit-card"></i> Thanh toán Online</h5>
-                <p>Bạn có thể thanh toán qua Momo hoặc VNPAY.</p>
-                <form method="post" asp-action="CheckoutOnline">
-                    <div class="mb-3">
-                        <label class="form-label">Chọn cổng thanh toán</label>
-                        <select name="paymentGateway" class="form-select payment-select" required>
-                            <option value="">-- Chọn --</option>
-                            <option value="momo">Momo</option>
-                            <option value="vnpay">VNPAY</option>
-                        </select>
+        <!-- GIỎ HÀNG -->
+        <div class="cart-container">
+            @if (!Model?.Any() ?? true)
+            {
+                <div class="empty-cart text-center py-5">
+                    <i class="bi bi-cart-x" style="font-size:4rem;color:#ccc;"></i>
+                    <h3 class="mt-3">Giỏ hàng trống</h3>
+                    <a href="/Home/Index" class="btn btn-primary px-4">Tiếp tục mua sắm</a>
+                </div>
+            }
+            else
+            {
+                <div class="card mb-4">
+                    <div class="card-body p-0">
+                        <table class="table modern-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Sản phẩm</th>
+                                    <th>Giá</th>
+                                    <th>Số lượng</th>
+                                    <th>Thành tiền</th>
+                                    <th>Xóa</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var mainItem in mainProducts)
+                                {
+                                    var bonusItem = bonusProducts.FirstOrDefault(b => b.ProductID == mainItem.Product.BonusProduct.ProductID);
+                                    <tr class="align-middle">
+                                        <td>
+                                            <div class="product-info-vertical">
+                                                <img src="@(mainItem.Product.ImageURL ?? "/images/default.png")" class="product-image" />
+                                                <div>
+                                                    <div class="product-name">@mainItem.Product.ProductName</div>
+                                                    @if (mainItem.Price < mainItem.Product.Price)
+                                                    {
+                                                        <small class="text-success">Đã giảm giá</small>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <del class="text-muted small">@formatCurrency(mainItem.Product.Price)</del><br />
+                                            <strong class="text-danger">@formatCurrency(mainItem.Price ?? mainItem.Product.Price)</strong>
+                                        </td>
+                                        <td>
+                                            <form method="post" asp-action="UpdateQuantity" class="quantity-controls d-inline">
+                                                <input type="hidden" name="cartId" value="@mainItem.CartID" />
+                                                <button type="submit" name="action" value="decrease" class="quantity-btn btn btn-outline-secondary" @(mainItem.Quantity <= 1 ? "disabled" : "")>−</button>
+                                                <span class="quantity-display mx-2">@mainItem.Quantity</span>
+                                                <button type="submit" name="action" value="increase" class="quantity-btn btn btn-outline-secondary">+</button>
+                                            </form>
+                                        </td>
+                                        <td class="fw-bold text-end">@formatCurrency((mainItem.Price ?? mainItem.Product.Price) * mainItem.Quantity)</td>
+                                        <td>
+                                            <form asp-action="Remove" method="post" class="d-inline">
+                                                <input type="hidden" name="cartId" value="@mainItem.CartID" />
+                                                <button type="submit" class="remove-btn btn btn-link p-0" onclick="return confirm('Xóa sản phẩm?')">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    @if (bonusItem != null)
+                                    {
+                                        <tr class="bonus-product-row bg-light align-middle">
+                                            <td>
+                                                <div class="product-info-vertical">
+                                                    <img src="@(bonusItem.Product.ImageURL ?? "/images/default.png")" class="product-image" />
+                                                    <div>
+                                                        <div class="product-name">@bonusItem.Product.ProductName</div>
+                                                        <span class="badge bg-success">Tặng kèm</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td><strong class="text-success">@formatCurrency(bonusItem.Price ?? bonusItem.Product.Price)</strong></td>
+                                            <td><span class="quantity-display">@bonusItem.Quantity</span></td>
+                                            <td class="text-success fw-bold text-end">@formatCurrency((bonusItem.Price ?? bonusItem.Product.Price) * bonusItem.Quantity)</td>
+                                            <td></td>
+                                        </tr>
+                                    }
+                                }
+                                @foreach (var item in standaloneProducts)
+                                {
+                                    <tr class="align-middle">
+                                        <td>
+                                            <div class="product-info-vertical">
+                                                <img src="@(item.Product.ImageURL ?? "/images/default.png")" class="product-image" />
+                                                <div>
+                                                    <div class="product-name">@item.Product.ProductName</div>
+                                                    @if (item.Price < item.Product.Price)
+                                                    {
+                                                        <small class="text-success">Đã giảm giá</small>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <del class="text-muted small">@formatCurrency(item.Product.Price)</del><br />
+                                            <strong class="text-danger">@formatCurrency(item.Price ?? item.Product.Price)</strong>
+                                        </td>
+                                        <td>
+                                            <form method="post" asp-action="UpdateQuantity" class="quantity-controls d-inline">
+                                                <input type="hidden" name="cartId" value="@item.CartID" />
+                                                <button type="submit" name="action" value="decrease" class="quantity-btn btn btn-outline-secondary" @(item.Quantity <= 1 ? "disabled" : "")>−</button>
+                                                <span class="quantity-display mx-2">@item.Quantity</span>
+                                                <button type="submit" name="action" value="increase" class="quantity-btn btn btn-outline-secondary">+</button>
+                                            </form>
+                                        </td>
+                                        <td class="fw-bold text-end">@formatCurrency((item.Price ?? item.Product.Price) * item.Quantity)</td>
+                                        <td>
+                                            <form asp-action="Remove" method="post" class="d-inline">
+                                                <input type="hidden" name="cartId" value="@item.CartID" />
+                                                <button type="submit" class="remove-btn btn btn-link p-0" onclick="return confirm('Xóa sản phẩm?')">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     </div>
-                    <input type="hidden" name="voucherCode" value="@voucherCode" />
-                    <button type="submit" class="payment-btn">Thanh toán</button>
-                </form>
+                </div>
+            }
+        </div>
+
+        <!-- TÓM TẮT ĐƠN HÀNG -->
+        <div class="summary-section card mb-4">
+            <div class="card-header">Tóm tắt đơn hàng</div>
+            <div class="card-body">
+                <div class="summary-row"><span>Tổng tiền hàng</span><strong>@formatCurrency(totalAmount)</strong></div>
+                @if (discountAmount > 0)
+                {
+                    <div class="summary-row text-success"><span>Giảm giá (Voucher @voucherCode)</span><strong>−@formatCurrency(discountAmount)</strong></div>
+                }
+                <div class="summary-row" id="shippingRow" style="display:none;"><span>Phí vận chuyển</span><strong id="shippingFee">0 ₫</strong></div>
+                <div class="summary-row">
+                    <label class="form-check">
+                        <input type="checkbox" id="usePointsCheckbox" class="form-check-input" />
+                        <span class="form-check-label">Sử dụng <span id="userPoints">@userPoints</span> điểm <small class="text-muted">(1 điểm = 1.000₫)</small></span>
+                    </label>
+                </div>
+                <div class="summary-row total mt-3"><span><strong>Tổng thanh toán</strong></span><strong id="finalTotal" class="text-primary fs-5">@formatCurrency(totalAfterDiscount)</strong></div>
             </div>
         </div>
-        <div class="col-md-6 d-flex">
-            <div class="payment-card store flex-fill">
-                <h5><i class="bi bi-shop"></i> Thanh toán tại cửa hàng</h5>
-                <p>Đặt hàng và thanh toán khi nhận sản phẩm tại cửa hàng.</p>
-                <div id="loadingEffect" class="loading-effect d-none">
-                    <div class="spinner-border" style="width: 2rem; height: 2rem;"></div>
-                    <p class="mt-2">Đang xử lý...</p>
+
+        <!-- ĐỊA CHỈ GIAO HÀNG -->
+        <div class="card mb-4">
+            <div class="card-header">Địa chỉ giao hàng</div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="getCurrentLocation()">Lấy vị trí hiện tại</button>
+                    <small class="text-muted d-block">Nếu bị chặn: Click khóa → Site settings → Location → Allow → Reload</small>
                 </div>
-                <div id="successEffect" class="success-effect d-none">
-                    <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
-                    <p class="mt-2 fw-bold">Thành công!</p>
+                <div class="input-group mb-2">
+                    <input type="text" id="shippingAddress" class="form-control" placeholder="VD: 123 Lê Lợi, Quận 1, TP.HCM" />
+                    <button type="button" class="btn btn-outline-secondary" onclick="geocodeAddress()">Tìm tọa độ</button>
                 </div>
-                <form id="paymentForm" asp-action="Checkout" method="post">
-                    <input type="hidden" name="paymentMethod" value="Tại cửa hàng" />
-                    <input type="hidden" name="voucherCode" value="@voucherCode" />
-                    <button type="button" id="confirmPaymentBtn" class="payment-btn">Xác nhận</button>
+                <button type="button" class="btn btn-success w-100" onclick="calculateShippingFee()">Tính phí vận chuyển</button>
+                <div id="shippingResult" class="mt-3"></div>
+                <input type="hidden" id="shippingLat" /><input type="hidden" id="shippingLng" />
+                <div id="map"></div>
+            </div>
+        </div>
+
+        <!-- MÃ GIẢM GIÁ -->
+        <div class="voucher-section card mb-4">
+            <div class="card-header">Mã giảm giá</div>
+            <div class="card-body">
+                <form method="post" asp-action="ApplyVoucher" class="d-flex gap-2">
+                    <input type="text" name="voucherCode" class="form-control" placeholder="Nhập mã" value="@voucherCode" @(string.IsNullOrEmpty(voucherCode) ? "" : "readonly") />
+                    <button type="submit" class="btn btn-primary" @(string.IsNullOrEmpty(voucherCode) ? "" : "disabled")>Áp dụng</button>
                 </form>
+                @if (!string.IsNullOrEmpty(voucherCode))
+                {
+                    <div class="mt-2 d-flex justify-content-between align-items-center">
+                        <span>Đã áp dụng: <strong>@voucherCode</strong></span>
+                        <form asp-action="RemoveVoucher" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Bỏ</button>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- THANH TOÁN -->
+        <div class="payment-section card">
+            <div class="card-header">Chọn phương thức thanh toán</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="payment-card online d-flex flex-column">
+                            <h5>Thanh toán Online</h5>
+                            <p class="text-muted mb-3">VNPAY - An toàn & nhanh chóng</p>
+                            <!-- THANH TOÁN ONLINE -->
+                            <form method="post" asp-action="CheckoutOnline" class="mt-auto">
+                                <input type="hidden" name="voucherCode" value="@voucherCode" />
+                                <input type="hidden" name="usePoints" id="onlineUsePoints" value="false" />
+                                <input type="hidden" name="shippingLat" id="onlineShippingLat" />
+                                <input type="hidden" name="shippingLng" id="onlineShippingLng" />
+                                <input type="hidden" name="shippingAddress" id="onlineShippingAddress" />
+                                <input type="hidden" name="shippingFee" id="onlineShippingFee" value="0" /> <!-- THÊM DÒNG NÀY -->
+                                <button type="submit" class="btn btn-success w-100">Thanh toán Online</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="payment-card store d-flex flex-column">
+                            <h5>Thanh toán tại cửa hàng</h5>
+                            <p class="text-muted mb-3">Nhận hàng & thanh toán trực tiếp</p>
+                            <!-- THANH TOÁN TẠI CỬA HÀNG -->
+                            <form method="post" asp-action="Checkout" class="mt-auto">
+                                <input type="hidden" name="paymentMethod" value="Tại cửa hàng" />
+                                <input type="hidden" name="voucherCode" value="@voucherCode" />
+                                <input type="hidden" name="usePoints" id="codUsePoints" value="false" />
+                                <input type="hidden" name="shippingLat" id="codShippingLat" />
+                                <input type="hidden" name="shippingLng" id="codShippingLng" />
+                                <input type="hidden" name="shippingAddress" id="codShippingAddress" />
+                                <input type="hidden" name="shippingFee" id="codShippingFee" value="0" /> <!-- THÊM DÒNG NÀY -->
+                                <button type="submit" class="btn btn-primary w-100">Xác nhận đơn</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Hiệu ứng nút số lượng
-        document.querySelectorAll('.quantity-btn').forEach(btn => {
-            btn.addEventListener('click', function () {
-                this.style.transform = 'scale(0.95)';
-                setTimeout(() => this.style.transform = 'scale(1)', 100);
+    <!-- JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <script>
+        let shippingFee = 0;
+        const totalAmount = @totalAmount;
+        const discountAmount = @discountAmount;
+        const userPoints = @userPoints;
+        const vi = new Intl.NumberFormat('vi-VN');
+
+        // ---------- MAP ----------
+        let map, userMarker, storeMarker, routeControl;
+        const STORE_LAT = 10.7769;
+        const STORE_LNG = 106.7009;
+
+        function initMap() {
+            map = L.map('map').setView([STORE_LAT, STORE_LNG], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+            storeMarker = L.marker([STORE_LAT, STORE_LNG]).addTo(map)
+                .bindPopup('Cửa hàng').openPopup();
+        }
+
+        function setShippingCoords(lat, lng, address) {
+            document.getElementById('shippingLat').value = lat;
+            document.getElementById('shippingLng').value = lng;
+            ['online','cod'].forEach(p => {
+                document.getElementById(`${p}ShippingLat`).value = lat;
+                document.getElementById(`${p}ShippingLng`).value = lng;
+                document.getElementById(`${p}ShippingAddress`).value = address;
             });
+
+            const pos = [lat, lng];
+            if (!userMarker) {
+                userMarker = L.marker(pos).addTo(map).bindPopup('Bạn đang ở đây');
+            } else {
+                userMarker.setLatLng(pos);
+            }
+            map.setView(pos, 14);
+
+            if (routeControl) map.removeControl(routeControl);
+            routeControl = L.Routing.control({
+                waypoints: [L.latLng(STORE_LAT, STORE_LNG), L.latLng(lat, lng)],
+                routeWhileDragging: false,
+                addWaypoints: false,
+                createMarker: () => null,
+                lineOptions: { styles: [{ color: '#0d6efd', weight: 5 }] },
+                router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1' })
+            }).addTo(map);
+
+            saveShippingData(lat, lng, address);
+        }
+
+        // ---------- LƯU & KHÔI PHỤC ----------
+        function saveShippingData(lat, lng, address, fee = null) {
+            const data = { lat, lng, address };
+            if (fee !== null) data.shippingFee = fee;
+            localStorage.setItem('cartShipping', JSON.stringify(data));
+        }
+
+        function loadSavedShipping() {
+            const saved = localStorage.getItem('cartShipping');
+            if (!saved) return;
+            try {
+                const data = JSON.parse(saved);
+                if (data.lat && data.lng && data.address) {
+                    document.getElementById('shippingAddress').value = data.address;
+                    document.getElementById('shippingLat').value = data.lat;
+                    document.getElementById('shippingLng').value = data.lng;
+                    ['online','cod'].forEach(p => {
+                        document.getElementById(`${p}ShippingLat`).value = data.lat;
+                        document.getElementById(`${p}ShippingLng`).value = data.lng;
+                        document.getElementById(`${p}ShippingAddress`).value = data.address;
+                    });
+                    setShippingCoords(data.lat, data.lng, data.address);
+                    if (data.shippingFee) {
+                        shippingFee = data.shippingFee;
+                        document.getElementById('shippingRow').style.display = 'flex';
+                        document.getElementById('shippingResult').innerHTML = `
+                            <div class="alert alert-success">
+                                <strong>Địa chỉ:</strong> ${data.address}<br>
+                                <strong>Khoảng cách:</strong> Đã lưu trước đó<br>
+                                <strong>Phí ship:</strong> ${vi.format(data.shippingFee)} ₫
+                            </div>`;
+                        updateFinalTotal();
+                    }
+                }
+            } catch (e) {
+                localStorage.removeItem('cartShipping');
+            }
+        }
+
+        // ---------- TÍNH TOÁN ----------
+               function updateFinalTotal() {
+            const subtotal = totalAmount - discountAmount + shippingFee;
+            const pointValue = document.getElementById('usePointsCheckbox').checked
+                ? Math.min(userPoints * 1000, subtotal)
+                : 0;
+            const final = Math.max(subtotal - pointValue, 0);
+
+            document.getElementById('finalTotal').textContent = vi.format(final) + ' ₫';
+            document.getElementById('shippingFee').textContent = vi.format(shippingFee) + ' ₫';
+
+            const use = document.getElementById('usePointsCheckbox').checked;
+            document.getElementById('onlineUsePoints').value = use;
+            document.getElementById('codUsePoints').value = use;
+
+            // CẬP NHẬT shippingFee VÀO FORM
+            document.getElementById('onlineShippingFee').value = shippingFee;
+            document.getElementById('codShippingFee').value = shippingFee;
+        }
+
+        // ---------- ĐỊA CHỈ ----------
+        async function getCurrentLocation() {
+            if (!navigator.geolocation) return alert('Trình duyệt không hỗ trợ định vị.');
+            navigator.geolocation.getCurrentPosition(async pos => {
+                await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+                calculateShippingFee();
+            }, err => {
+                if (err.code === 1) alert('Quyền vị trí bị chặn. Click biểu tượng khóa → Site settings → Location → Allow → Reload.');
+                else alert('Lỗi: ' + err.message);
+            });
+        }
+
+        async function geocodeAddress() {
+            const addr = document.getElementById('shippingAddress').value.trim();
+            if (!addr) return alert('Nhập địa chỉ!');
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&countrycodes=vn&limit=1`;
+            try {
+                const r = await fetch(url, {headers:{'User-Agent':'WeblamchoiApp/1.0'}});
+                const d = await r.json();
+                if (d?.length) {
+                    const {lat, lon, display_name} = d[0];
+                    document.getElementById('shippingAddress').value = display_name;
+                    setShippingCoords(lat, lon, display_name);
+                    calculateShippingFee();
+                } else alert('Không tìm thấy địa chỉ.');
+            } catch { alert('Lỗi kết nối.'); }
+        }
+
+        async function reverseGeocode(lat, lng) {
+            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`;
+            try {
+                const r = await fetch(url, {headers:{'User-Agent':'WeblamchoiApp/1.0'}});
+                const d = await r.json();
+                if (d?.display_name) {
+                    document.getElementById('shippingAddress').value = d.display_name;
+                    setShippingCoords(lat, lng, d.display_name);
+                }
+            } catch {}
+        }
+
+        // ---------- TÍNH PHÍ ----------
+        async function calculateShippingFee() {
+            const lat = document.getElementById('shippingLat').value;
+            const lng = document.getElementById('shippingLng').value;
+            const addr = document.getElementById('shippingAddress').value;
+            if (!lat || !lng || !addr) return alert('Chọn địa chỉ trước!');
+
+            const res = await fetch('/Cart/CalculateShipping', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat: parseFloat(lat), lng: parseFloat(lng), address: addr })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                shippingFee = data.shippingFee;
+                document.getElementById('shippingRow').style.display = 'flex';
+                document.getElementById('shippingResult').innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>Địa chỉ:</strong> ${addr}<br>
+                        <strong>Khoảng cách:</strong> ${data.distance} km<br>
+                        <strong>Phí ship:</strong> ${vi.format(data.shippingFee)} ₫
+                    </div>`;
+                updateFinalTotal();
+                saveShippingData(lat, lng, addr, shippingFee);
+            } else {
+                document.getElementById('shippingResult').innerHTML = `
+                    <div class="alert alert-danger">
+                        Không thể tính khoảng cách: ${data.message}
+                    </div>`;
+            }
+        }
+
+        // ---------- KHỞI ĐỘNG ----------
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            updateFinalTotal();
+            loadSavedShipping();
         });
 
-        // Thanh toán tại cửa hàng
-        const confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
-        const paymentForm = document.getElementById('paymentForm');
-        const loadingEffect = document.getElementById('loadingEffect');
-        const successEffect = document.getElementById('successEffect');
+        document.getElementById('usePointsCheckbox').addEventListener('change', updateFinalTotal);
+    </script>
 
-        if (confirmPaymentBtn) {
-            confirmPaymentBtn.addEventListener('click', function () {
-                paymentForm.style.display = 'none';
-                loadingEffect.classList.remove('d-none');
-                setTimeout(() => {
-                    loadingEffect.classList.add('d-none');
-                    successEffect.classList.remove('d-none');
-                    setTimeout(() => paymentForm.submit(), 1000);
-                }, 1500);
-            });
-        }
-
-        // 💰 Tính tổng thanh toán khi dùng điểm
-        const usePointsCheckbox = document.getElementById('usePointsCheckbox');
-        const totalDisplay = document.querySelector('.summary-row.total strong');
-        const totalAfterDiscountValue = parseFloat("@(totalAfterDiscount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))") || 0; // Use F2 for decimal precision
-        const userPoints = parseInt("@(ViewBag.UserPoints ?? 0)", 10) || 0;
-        const usePointsInput = document.getElementById('usePointsInput');
-
-        if (usePointsCheckbox) {
-            usePointsCheckbox.addEventListener('change', function () {
-                let newTotal = totalAfterDiscountValue;
-                const pointValue = userPoints * 1000; // 1 điểm = 1.000₫
-
-                if (this.checked && pointValue > 0) {
-                    newTotal = Math.max(totalAfterDiscountValue - pointValue, 0);
-                    usePointsInput.value = "1";
-                } else {
-                    usePointsInput.value = "0";
-                }
-
-                totalDisplay.textContent = newTotal.toLocaleString('vi-VN') + ' ₫';
-            });
-        }
-    });
-</script>
+</body>
+</html>
