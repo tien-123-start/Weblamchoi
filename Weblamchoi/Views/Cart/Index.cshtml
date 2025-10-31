@@ -3,17 +3,32 @@
 
 @{
     var vi = new CultureInfo("vi-VN");
+
+    // Các giá trị từ ViewBag
     var totalAmount = ViewBag.TotalAmount ?? 0m;
-    var discountAmount = ViewBag.DiscountAmount ?? 0m;
+    var discountAmount = TempData["VoucherDiscount"] != null ? Convert.ToDecimal(TempData["VoucherDiscount"]) : 0;
     var totalAfterDiscount = ViewBag.TotalAfterDiscount ?? totalAmount;
-    var voucherCode = ViewData["AppliedVoucherCode"] as string ?? string.Empty;
     var userPoints = ViewBag.UserPoints ?? 0;
+
+    // Giá trị voucher từ TempData (nếu có)
+    var voucherCode = TempData["VoucherCode"]?.ToString();
+    var voucherValue = TempData["VoucherValue"] != null ? Convert.ToDecimal(TempData["VoucherValue"]) : 0;
+    var isPercent = TempData["VoucherIsPercent"] != null && (bool)TempData["VoucherIsPercent"];
+    decimal discount = TempData["VoucherDiscount"] != null ? Convert.ToDecimal(TempData["VoucherDiscount"]) : 0;
+
+    // Gán lại cho discountAmount nếu có giảm giá
+    if (discount > 0)
+    {
+        discountAmount = discount;
+    }
+
+    // Danh sách giỏ hàng
     var mainProducts = Model?.Where(c => c.Product?.BonusProduct != null).ToList() ?? new List<Cart>();
     var bonusProductIds = mainProducts.Select(m => m.Product.BonusProduct.ProductID).ToHashSet();
     var bonusProducts = Model?.Where(c => bonusProductIds.Contains(c.ProductID)).ToList() ?? new List<Cart>();
     var standaloneProducts = Model?.Except(mainProducts).Except(bonusProducts).ToList() ?? new List<Cart>();
 
-    // HÀM FORMAT TIỀN CHUẨN VND
+    // Hàm định dạng tiền
     Func<decimal?, string> formatCurrency = (price) =>
         price.HasValue ? $"{price.Value:N0} ₫" : "0 ₫";
 }
@@ -196,10 +211,31 @@
             <div class="card-header">Tóm tắt đơn hàng</div>
             <div class="card-body">
                 <div class="summary-row"><span>Tổng tiền hàng</span><strong>@formatCurrency(totalAmount)</strong></div>
-                @if (discountAmount > 0)
+
+
+                @if (!string.IsNullOrEmpty(voucherCode))
                 {
-                    <div class="summary-row text-success"><span>Giảm giá (Voucher @voucherCode)</span><strong>−@formatCurrency(discountAmount)</strong></div>
+                    <div class="summary-row text-success">
+                        <span>
+                            Áp dụng Voucher: <strong>@voucherCode</strong>
+                            (
+                            @if (isPercent)
+                            {
+                                <text>Giảm @voucherValue%</text>
+                            }
+                            else
+                            {
+                                <text>Giảm @voucherValue.ToString("N0") ₫</text>
+                            }
+                            )
+                        </span>
+                        <strong>−@discountAmount.ToString("N0") ₫</strong>
+                    </div>
                 }
+
+
+
+
                 <div class="summary-row" id="shippingRow" style="display:none;"><span>Phí vận chuyển</span><strong id="shippingFee">0 ₫</strong></div>
                 <div class="summary-row">
                     <label class="form-check">
@@ -235,7 +271,8 @@
             <div class="card-header">Mã giảm giá</div>
             <div class="card-body">
                 <form method="post" asp-action="ApplyVoucher" class="d-flex gap-2">
-                    <input type="text" name="voucherCode" class="form-control" placeholder="Nhập mã" value="@voucherCode" @(string.IsNullOrEmpty(voucherCode) ? "" : "readonly") />
+                    <input type="text" name="voucherCode" class="form-control" placeholder="Nhập mã"
+                           value="@voucherCode" @(string.IsNullOrEmpty(voucherCode) ? "" : "readonly") />
                     <button type="submit" class="btn btn-primary" @(string.IsNullOrEmpty(voucherCode) ? "" : "disabled")>Áp dụng</button>
                 </form>
                 @if (!string.IsNullOrEmpty(voucherCode))

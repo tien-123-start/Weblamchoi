@@ -28,11 +28,25 @@ namespace weblamchoi.Controllers
                 return RedirectToAction("Index", "Login");
 
             var voucher = await _context.Vouchers
-                .FirstOrDefaultAsync(v => v.Code == voucherCode && v.IsActive && v.EndDate >= DateTime.Now);
+                .FirstOrDefaultAsync(v => v.Code == voucherCode
+                    && v.IsActive
+                    && v.StartDate <= DateTime.Now
+                    && v.EndDate >= DateTime.Now);
 
             if (voucher == null)
             {
-                TempData["VoucherError"] = "Mã giảm giá không hợp lệ hoặc đã hết hạn.";
+                var check = await _context.Vouchers.FirstOrDefaultAsync(v => v.Code == voucherCode);
+                if (check == null)
+                    TempData["VoucherError"] = "Mã giảm giá không tồn tại.";
+                else if (!check.IsActive)
+                    TempData["VoucherError"] = "Mã giảm giá đã bị khóa.";
+                else if (check.StartDate > DateTime.Now)
+                    TempData["VoucherError"] = $"Mã chỉ áp dụng từ ngày {check.StartDate:dd/MM/yyyy}.";
+                else if (check.EndDate < DateTime.Now)
+                    TempData["VoucherError"] = $"Mã đã hết hạn ngày {check.EndDate:dd/MM/yyyy}.";
+                else
+                    TempData["VoucherError"] = "Mã giảm giá không hợp lệ.";
+
                 return RedirectToAction("Index");
             }
 
@@ -42,18 +56,29 @@ namespace weblamchoi.Controllers
                 .ToListAsync();
 
             decimal totalAmount = cartItems.Sum(c => (c.Price ?? c.Product?.Price ?? 0) * c.Quantity);
-            decimal discount = voucher.IsPercentage
-                ? totalAmount * (voucher.DiscountAmount / 100m)
-                : Math.Min(voucher.DiscountAmount, totalAmount);
 
+            decimal discount = voucher.IsPercentage
+             ? totalAmount * ((decimal)voucher.DiscountAmount / 100)
+             : Math.Min(voucher.DiscountAmount, totalAmount);
+
+
+            // Lưu thông tin vào TempData để hiển thị
             TempData["VoucherCode"] = voucherCode;
             TempData["VoucherDiscount"] = discount.ToString("F2");
-            TempData["VoucherMessage"] = $"Áp dụng mã: {voucherCode} (Giảm {discount:N0}đ)";
+            TempData["VoucherIsPercent"] = voucher.IsPercentage;
+            TempData["VoucherValue"] = voucher.DiscountAmount;
+            TempData["VoucherMessage"] = voucher.IsPercentage
+                ? $"Áp dụng mã: {voucherCode} (Giảm {voucher.DiscountAmount}%)"
+                : $"Áp dụng mã: {voucherCode} (Giảm {voucher.DiscountAmount:N0}₫)";
+
             TempData.Keep("VoucherCode");
             TempData.Keep("VoucherDiscount");
+            TempData.Keep("VoucherIsPercent");
+            TempData.Keep("VoucherValue");
 
             return RedirectToAction("Index");
         }
+
 
         // === HIỂN THỊ GIỎ HÀNG ===
         public async Task<IActionResult> Index(string voucherCode = null)
