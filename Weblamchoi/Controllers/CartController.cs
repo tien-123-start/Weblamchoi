@@ -27,50 +27,68 @@ namespace weblamchoi.Controllers
             if (userId == null || !int.TryParse(userId, out int userIdInt))
                 return RedirectToAction("Index", "Login");
 
+            // Chỉ query 1 lần duy nhất
             var voucher = await _context.Vouchers
-                .FirstOrDefaultAsync(v => v.Code == voucherCode
-                    && v.IsActive
-                    && v.StartDate <= DateTime.Now
-                    && v.EndDate >= DateTime.Now);
+                .AsNoTracking()
+                .FirstOrDefaultAsync(v => v.Code == voucherCode);
 
+            // Kiểm tra tồn tại trước
             if (voucher == null)
             {
-                var check = await _context.Vouchers.FirstOrDefaultAsync(v => v.Code == voucherCode);
-                if (check == null)
-                    TempData["VoucherError"] = "Mã giảm giá không tồn tại.";
-                else if (!check.IsActive)
-                    TempData["VoucherError"] = "Mã giảm giá đã bị khóa.";
-                else if (check.StartDate > DateTime.Now)
-                    TempData["VoucherError"] = $"Mã chỉ áp dụng từ ngày {check.StartDate:dd/MM/yyyy}.";
-                else if (check.EndDate < DateTime.Now)
-                    TempData["VoucherError"] = $"Mã đã hết hạn ngày {check.EndDate:dd/MM/yyyy}.";
-                else
-                    TempData["VoucherError"] = "Mã giảm giá không hợp lệ.";
-
+                TempData["VoucherError"] = "Mã giảm giá không tồn tại.";
                 return RedirectToAction("Index");
             }
 
+            // Kiểm tra các điều kiện hợp lệ
+            if (!voucher.IsActive)
+            {
+                TempData["VoucherError"] = "Mã giảm giá đã bị khóa.";
+                return RedirectToAction("Index");
+            }
+
+            if (voucher.StartDate > DateTime.Now)
+            {
+                TempData["VoucherError"] = $"Mã chỉ áp dụng từ ngày {voucher.StartDate:dd/MM/yyyy}.";
+                return RedirectToAction("Index");
+            }
+
+            if (voucher.EndDate < DateTime.Now)
+            {
+                TempData["VoucherError"] = $"Mã đã hết hạn ngày {voucher.EndDate:dd/MM/yyyy}.";
+                return RedirectToAction("Index");
+            }
+
+            // Lấy giỏ hàng
             var cartItems = await _context.Carts
+                .AsNoTracking()
                 .Include(c => c.Product)
                 .Where(c => c.UserID == userIdInt)
                 .ToListAsync();
 
+            if (!cartItems.Any())
+            {
+                TempData["VoucherError"] = "Giỏ hàng của bạn đang trống.";
+                return RedirectToAction("Index");
+            }
+
+            // Tính tổng tiền
             decimal totalAmount = cartItems.Sum(c => (c.Price ?? c.Product?.Price ?? 0) * c.Quantity);
 
+            // Tính giảm giá
             decimal discount = voucher.IsPercentage
-             ? totalAmount * ((decimal)voucher.DiscountAmount / 100)
-             : Math.Min(voucher.DiscountAmount, totalAmount);
+                ? totalAmount * ((decimal)voucher.DiscountAmount / 100)
+                : Math.Min(voucher.DiscountAmount, totalAmount);
 
-
-            // Lưu thông tin vào TempData để hiển thị
+            // Lưu TempData để hiển thị
             TempData["VoucherCode"] = voucherCode;
             TempData["VoucherDiscount"] = discount.ToString("F2");
             TempData["VoucherIsPercent"] = voucher.IsPercentage;
-            TempData["VoucherValue"] = voucher.DiscountAmount;
+            TempData["VoucherValue"] = voucher.DiscountAmount.ToString("F2");
             TempData["VoucherMessage"] = voucher.IsPercentage
                 ? $"Áp dụng mã: {voucherCode} (Giảm {voucher.DiscountAmount}%)"
                 : $"Áp dụng mã: {voucherCode} (Giảm {voucher.DiscountAmount:N0}₫)";
 
+            // Giữ lại TempData
             TempData.Keep("VoucherCode");
             TempData.Keep("VoucherDiscount");
             TempData.Keep("VoucherIsPercent");
@@ -78,6 +96,7 @@ namespace weblamchoi.Controllers
 
             return RedirectToAction("Index");
         }
+
 
 
         // === HIỂN THỊ GIỎ HÀNG ===
