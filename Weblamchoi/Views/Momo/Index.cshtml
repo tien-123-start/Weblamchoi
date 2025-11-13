@@ -1,0 +1,45 @@
+﻿@{
+    ViewData["Title"] = "Thanh toán MoMo";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h2 class="mb-4">
+                <img src="https://momo.vn/images/logo-momo.png" width="40" class="me-2" style="vertical-align:middle">
+                Thanh toán qua MoMo
+            </h2>
+
+            @if (ViewBag.Error != null)
+            {
+                <div class="alert alert-danger">
+                    <strong>Lỗi:</strong> @ViewBag.Error
+                </div>
+            }
+            else if (ViewBag.Success != null)
+            {
+                <div class="alert alert-success">
+                    <strong>@ViewBag.Success</strong>
+                </div>
+            }
+
+            <p class="text-muted mb-4">
+                Dùng nút dưới để test thanh toán MoMo (tạo đơn tự động).
+            </p>
+
+            <div class="d-flex gap-3 justify-content-center">
+                <a href="@Url.Action("Index", "Cart")" class="btn btn-outline-primary">
+                    Quay lại giỏ hàng
+                </a>
+
+                <!-- NÚT TEST TỰ ĐỘNG TẠO ĐƠN -->
+                <form method="post" asp-action="TestCreate" asp-controller="Momo" class="d-inline">
+                    <button type="submit" class="btn btn-danger">
+                        Test thanh toán MoMo
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

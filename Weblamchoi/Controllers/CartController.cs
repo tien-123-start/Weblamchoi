@@ -500,6 +500,119 @@ namespace weblamchoi.Controllers
             }
         }
 
+
+        [HttpPost]
+        public async Task<IActionResult> CheckoutMomo(
+      string voucherCode = null,
+      bool usePoints = false,
+      decimal? shippingLat = null,
+      decimal? shippingLng = null,
+      string shippingAddress = null,
+      decimal shippingFee = 0)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null || !int.TryParse(userId, out int userIdInt))
+                return RedirectToAction("Index", "Login");
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserID == userIdInt);
+            var cartItems = await _context.Carts
+                .Include(c => c.Product)
+                .Where(c => c.UserID == userIdInt)
+                .ToListAsync();
+
+            if (!cartItems.Any())
+            {
+                TempData["ErrorMessage"] = "Giỏ hàng trống.";
+                return RedirectToAction("Index");
+            }
+
+            if (!shippingLat.HasValue || !shippingLng.HasValue || string.IsNullOrEmpty(shippingAddress))
+            {
+                TempData["ErrorMessage"] = "Vui lòng chọn địa chỉ giao hàng.";
+                return RedirectToAction("Index");
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // TÍNH TỔNG TIỀN
+                decimal totalAmount = cartItems.Sum(i => (i.Product?.Price ?? 0m) * i.Quantity);
+                decimal discount = await CalculateDiscount(voucherCode, totalAmount);
+                decimal amountAfterDiscount = totalAmount - discount;
+                decimal subtotal = amountAfterDiscount + shippingFee;
+
+                if (usePoints && user.Points > 0)
+                {
+                    decimal pointValue = Math.Min(user.Points * 1000m, subtotal);
+                    subtotal -= pointValue;
+                    user.Points -= (int)(pointValue / 1000m);
+                    _context.Users.Update(user);
+                }
+
+                // TẠO ĐƠN HÀNG
+                var order = new Order
+                {
+                    UserID = userIdInt,
+                    OrderDate = DateTime.Now,
+                    Status = "Chờ thanh toán MoMo",
+                    TotalAmount = subtotal,
+                    VoucherCode = voucherCode
+                };
+                _context.Orders.Add(order);
+                await _context.SaveChangesAsync();
+
+                // CHI TIẾT ĐƠN HÀNG
+                foreach (var item in cartItems)
+                {
+                    _context.OrderDetails.Add(new OrderDetail
+                    {
+                        OrderID = order.OrderID,
+                        ProductID = item.ProductID,
+                        Quantity = item.Quantity,
+                        UnitPrice = item.Product?.Price ?? 0m
+                    });
+                }
+
+                _context.Shippings.Add(new Shipping
+                {
+                    OrderID = order.OrderID,
+                    ShippingAddress = shippingAddress,
+                    ShippingMethod = "Giao hàng tiêu chuẩn",
+                    ShippingFee = shippingFee,
+                    DestinationLat = shippingLat.ToString(),
+                    DestinationLng = shippingLng.ToString()
+                });
+
+                _context.Payments.Add(new Payment
+                {
+                    OrderID = order.OrderID,
+                    PaymentMethod = "MoMo",
+                    PaidAmount = subtotal,
+                    Status = "Pending"
+                });
+
+                _context.Carts.RemoveRange(cartItems);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                await SendAdminNotification(order, user, "Chờ thanh toán MoMo");
+
+                // NHẢY NGAY TRANG QR – GỬI amount BẮT BUỘC
+                return RedirectToAction("Create", "Momo", new
+                {
+                    orderId = order.OrderID,
+                    amount = (long)Math.Round(subtotal),
+                    orderInfo = $"Thanh toán đơn hàng #{order.OrderID}"
+                });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                TempData["ErrorMessage"] = "Lỗi: " + ex.Message;
+                return RedirectToAction("Index");
+            }
+        }
+
         // === TÍNH PHÍ SHIP (API) ===
         [HttpPost]
         public async Task<JsonResult> CalculateShipping([FromBody] ShippingDto dto)

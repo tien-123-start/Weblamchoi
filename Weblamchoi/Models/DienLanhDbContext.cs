@@ -24,11 +24,12 @@ namespace weblamchoi.Models
         public DbSet<BonusProduct> BonusProducts { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<UserVoucher> UserVouchers { get; set; }
-
+        public DbSet<MomoResponseEntity> MomoResponses { get; set; }
+        public DbSet<MomoTransaction> MomoTransactions { get; set; }    
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-
+                
             modelBuilder.Entity<Product>()
                 .Property(p => p.Price)
                 .HasColumnType("decimal(18,2)");

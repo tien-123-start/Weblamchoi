@@ -20,6 +20,67 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     @RenderSection("Styles", required: false)
 </head>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const toggleBtn = document.getElementById("themeToggle");
+        const icon = toggleBtn.querySelector("i");
+        const body = document.body;
+
+        // 🔹 Đọc chế độ trước đó
+        const savedTheme = localStorage.getItem("theme");
+        if (savedTheme === "dark") {
+            body.classList.add("dark-mode");
+            icon.classList.replace("bi-moon-fill", "bi-sun-fill");
+            toggleBtn.classList.replace("btn-light", "btn-dark");
+        }
+
+        // 🔹 Khi bấm đổi chế độ
+        toggleBtn.addEventListener("click", () => {
+            const isDark = body.classList.toggle("dark-mode");
+            if (isDark) {
+                icon.classList.replace("bi-moon-fill", "bi-sun-fill");
+                toggleBtn.classList.replace("btn-light", "btn-dark");
+                localStorage.setItem("theme", "dark");
+            } else {
+                icon.classList.replace("bi-sun-fill", "bi-moon-fill");
+                toggleBtn.classList.replace("btn-dark", "btn-light");
+                localStorage.setItem("theme", "light");
+            }
+        });
+    });
+</script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const langBtn = document.getElementById("langToggle");
+        const currentLang = localStorage.getItem("lang") || "vi";
+        loadLanguage(currentLang);
+        updateButtonText(currentLang);
+
+        langBtn.addEventListener("click", function () {
+            const newLang = (localStorage.getItem("lang") === "vi") ? "en" : "vi";
+            localStorage.setItem("lang", newLang);
+            loadLanguage(newLang);
+            updateButtonText(newLang);
+        });
+
+        function loadLanguage(lang) {
+            fetch(`/lang/${lang}.json`)
+                .then(res => res.json())
+                .then(data => {
+                    document.querySelectorAll("[data-key]").forEach(el => {
+                        const key = el.getAttribute("data-key");
+                        if (data[key]) el.textContent = data[key];
+                    });
+                })
+                .catch(err => console.error("Lỗi tải ngôn ngữ:", err));
+        }
+
+        function updateButtonText(lang) {
+            langBtn.innerHTML = lang === "vi" ? "🇻🇳 VI" : "🇺🇸 EN";
+        }
+    });
+</script>
+
 <body>
     @if (User.Identity?.IsAuthenticated == true)
     {
@@ -66,15 +127,29 @@
                         }
                     </select>
                 </div>
-
+                
                 <!-- User Actions -->
                 <div class="user-actions">
+					<!--Đổi chế độ nền-->
+                    <button id="themeToggle" class="btn btn-light ms-2" title="Đổi chế độ nền">
+                        <i class="bi bi-moon-fill"></i>
+                    </button>
+                    <!--Đổi ngôn ngữ -->
+
+                    <div class="language-switch ms-2">
+                        <button id="langToggle" class="btn btn-outline-primary">
+                            🇻🇳 VI
+                        </button>
+                    </div>
+
+
                     @if (User.Identity?.IsAuthenticated == true)
                     {
                         <div class="user-dropdown">
                             <div class="user-info">
                                 <div class="user-avatar">@User.Identity.Name.First().ToString().ToUpper()</div>
-                                <span class="user-name">@User.Identity.Name</span>
+                                <span class="user-name" data-key="greeting">Xin chào 😊 @User.Identity.Name</span>
+
                             </div>
                             <div class="user-dropdown-menu">
                                 <a class="user-dropdown-item" asp-controller="Users" asp-action="Profile">
@@ -124,11 +199,11 @@
     <nav class="main-nav">
         <div class="container">
             <ul class="nav-list">
-                <li class="nav-item @(currentController == "Home" && currentAction == "Index" && currentCategory == null ? "active" : "")"><a href="/Home/Index">Trang chủ</a></li>
-                <li class="nav-item @(currentAction == "About" ? "active" : "")"><a href="/Home/About">Giới thiệu</a></li>
-                <li class="nav-item @(currentController == "Contact" ? "active" : "")"><a asp-controller="Contact" asp-action="Index">Liên hệ</a></li>
-                <li class="nav-item"><a href="#">Khuyến mãi</a></li>
-                <li class="nav-item"><a href="/Home/Tintuc">Tin tức</a></li>
+                <li class="nav-item @(currentController == "Home" && currentAction == "Index" && currentCategory == null ? "active" : "")"><a href="/Home/Index"data-key="home">Trang chủ</a></li>
+                <li class="nav-item @(currentAction == "About" ? "active" : "")"><a href="/Home/About" data-key="about">Giới thiệu</a></li>
+                <li class="nav-item @(currentController == "Contact" ? "active" : "")"><a asp-controller="Contact" asp-action="Index" data-key="contact">Liên hệ</a></li>
+                <li class="nav-item"><a href="#" data-key="promo">Khuyến mãi</a></li>
+                <li class="nav-item"><a href="/Home/Tintuc" data-key="news">Tin tức</a></li>
             </ul>
         </div>
     </nav>
@@ -136,11 +211,11 @@
     <!-- Hero -->
     <section class="hero-section">
         <div class="container text-center">
-            <h1 class="hero-title">Chào mừng đến với Điện Máy Xanh</h1>
-            <p class="hero-subtitle">Nơi mua sắm điện máy, điện tử uy tín hàng đầu Việt Nam</p>
+            <h1 class="hero-title" data-key="welcome">Chào mừng đến với Điện Máy Xanh</h1>
+            <p class="hero-subtitle" data-key="subtitle">Nơi mua sắm điện máy, điện tử uy tín hàng đầu Việt Nam</p>
             <div class="mt-4">
-                <a href="#" class="btn-primary-custom me-3">Khám phá ngay</a>
-                <a href="#" class="btn-outline-custom">Xem khuyến mãi</a>
+                <a href="#" class="btn-primary-custom me-3" data-key="explore">Khám phá ngay</a>
+                <a href="#" class="btn-outline-custom" data-key="seePromo">Xem khuyến mãi</a>
             </div>
         </div>
     </section>
@@ -388,6 +463,60 @@
             .notification-link:hover {
                 background: #f8f9fa;
             }
+
+        /* 🌞 Light mode mặc định */
+        body {
+            background-color: #ffffff;
+            color: #212529;
+            transition: all 0.3s ease;
+        }
+
+            /* 🌙 Dark mode */
+            body.dark-mode {
+                background-color: #121212;
+                color: #f1f1f1;
+            }
+
+        /* Navbar, footer, card, input,... */
+        .dark-mode .main-header,
+        .dark-mode .main-nav,
+        .dark-mode .footer,
+        .dark-mode .top-bar,
+        .dark-mode .categories-section,
+        .dark-mode .features-section {
+            background-color: #1e1e1e !important;
+            color: #eaeaea !important;
+        }
+
+        .dark-mode .nav-list a,
+        .dark-mode a {
+            color: #00bfff !important;
+        }
+
+        .dark-mode .btn-light {
+            background-color: #2a2a2a !important;
+            color: #fff !important;
+        }
+
+        .dark-mode .list-group-item {
+            background-color: #2a2a2a;
+            color: #eaeaea;
+            border-color: #444;
+        }
+
+        .dark-mode input,
+        .dark-mode select,
+        .dark-mode .search-input {
+            background-color: #2a2a2a;
+            color: #fff;
+            border: 1px solid #555;
+        }
+
+        .dark-mode .hero-section {
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+
     </style>
 
 </body>

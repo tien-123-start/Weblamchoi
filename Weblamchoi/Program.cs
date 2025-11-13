@@ -1,11 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
-using weblamchoi.Models;
-using weblamchoi.Services;
-using Weblamchoi.Hubs;
 using Polly;
 using Polly.Extensions.Http;
 using System.Net.Http.Headers;
+using weblamchoi.Hubs;
+using weblamchoi.Models;
+using weblamchoi.Services;
+using Weblamchoi.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +23,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 builder.Services.AddAuthorization();
 builder.Services.AddSignalR();
+builder.Services.AddControllersWithViews();
 // DbContext
 builder.Services.AddDbContext<DienLanhDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -67,7 +69,8 @@ builder.Services.AddLogging(logging =>
     logging.AddDebug();
     logging.SetMinimumLevel(LogLevel.Information);
 });
-
+builder.Services.Configure<MomoSettings>(builder.Configuration.GetSection("Momo"));
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 var app = builder.Build();
 
 // Apply migrations
@@ -109,5 +112,5 @@ app.MapControllerRoute(
 // SignalR hubs
 app.MapHub<ChatHub>("/chathub");
 app.MapHub<weblamchoi.Hubs.NotificationHub>("/notificationHub");
-
+app.MapHub<PaymentHub>("/paymentHub"); // Đường dẫn SignalR
 app.Run();

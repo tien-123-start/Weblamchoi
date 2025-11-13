@@ -64,7 +64,7 @@ public class LoginController : Controller
                 return View("Index");
             }
 
-            await SignInUser(user.Email, "User", user.UserID.ToString());
+            await SignInUser(user.FullName, "User", user.UserID.ToString());
             return RedirectToAction("Index", "Home");
         }
 

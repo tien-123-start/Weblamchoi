@@ -1,0 +1,70 @@
+﻿@{
+    ViewData["Title"] = "Quét QR MoMo";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    long amount = ViewBag.Amount != null ? Convert.ToInt64(ViewBag.Amount) : 0;
+    var orderId = ViewBag.OrderId ?? "Không xác định";
+    var qrCode = ViewBag.QRCode ?? "";
+    var payUrl = ViewBag.PayUrl ?? "#";
+    var orderInfo = ViewBag.OrderInfo ?? "Thanh toán qua MoMo";
+    var systemOrderId = ViewBag.SystemOrderId ?? "N/A";
+
+    Func<long, string> formatCurrency = (money) =>
+        money >= 1000 ? $"{money:N0} ₫" : "0 ₫";
+}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            @if (ViewBag.Error != null)
+            {
+                <div class="alert alert-danger shadow-sm p-4 rounded">
+                    <h5 class="fw-bold">Lỗi thanh toán</h5>
+                    <p>@ViewBag.Error</p>
+                    <a href="@Url.Action("Index", "Cart")" class="btn btn-outline-secondary mt-3">
+                        Quay lại giỏ hàng
+                    </a>
+                </div>
+            }
+            else
+            {
+                <h3 class="mb-4 fw-bold">
+                    <img src="https://momo.vn/images/logo-momo.png" width="35" class="me-2 align-middle">
+                    Quét QR để thanh toán
+                </h3>
+
+                <div class="mb-4">
+                    <img src="@qrCode" alt="QR MoMo" class="img-fluid border rounded shadow" style="max-width:280px;" />
+                </div>
+
+                <div class="alert alert-light text-start shadow-sm rounded">
+                    <p><strong>Mã đơn MoMo:</strong> <code>@orderId</code></p>
+                    <p>
+                        <strong>Số tiền:</strong>
+                        <strong class="text-danger">@formatCurrency(amount)</strong>
+                    </p>
+                    <p><strong>Nội dung:</strong> @orderInfo</p>
+                    <p><strong>Đơn hệ thống:</strong> #@systemOrderId</p>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                    <a href="@payUrl" class="btn btn-danger btn-lg px-5">
+                        Mở ứng dụng MoMo
+                    </a>
+                    <a href="@Url.Action("Index", "Cart")" class="btn btn-outline-secondary btn-lg">
+                        Quay lại
+                    </a>
+                </div>
+
+                <small class="text-muted d-block mt-4 fst-italic">
+                    Mở app MoMo → Quét mã QR → Thanh toán
+                </small>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .border {
+        border: 3px solid #eee !important;
+    }
+</style>
