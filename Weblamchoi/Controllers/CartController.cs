@@ -478,7 +478,7 @@ namespace weblamchoi.Controllers
                     Status = "Pending"
                 });
 
-                _context.Carts.RemoveRange(cartItems);
+                //_context.Carts.RemoveRange(cartItems);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
                 await SendAdminNotification(order, user, "Chờ thanh toán VNPAY");
@@ -554,7 +554,7 @@ namespace weblamchoi.Controllers
                 {
                     UserID = userIdInt,
                     OrderDate = DateTime.Now,
-                    Status = "Chờ thanh toán MoMo",
+                    Status = "Chờ xử lý",
                     TotalAmount = subtotal,
                     VoucherCode = voucherCode
                 };

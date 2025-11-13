@@ -98,49 +98,62 @@ namespace DienLanhWeb.Controllers
 
             string responseCode = vnpay.GetResponseData("vnp_ResponseCode");
             string txnRef = vnpay.GetResponseData("vnp_TxnRef");
-
             if (!int.TryParse(txnRef, out int orderId))
             {
                 ViewBag.Message = "Mã đơn hàng không hợp lệ.";
                 return View();
             }
 
+            // KIỂM TRA USER ĐĂNG NHẬP
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int currentUserId))
+            {
+                ViewBag.Message = "Vui lòng đăng nhập.";
+                return View();
+            }
+
+            // LẤY ĐƠN HÀNG + KIỂM TRA SỞ HỮU
             var order = await _context.Orders
                 .Include(o => o.User)
-                .FirstOrDefaultAsync(o => o.OrderID == orderId);
+                .FirstOrDefaultAsync(o => o.OrderID == orderId && o.UserID == currentUserId);
 
             if (order == null)
             {
-                ViewBag.Message = "Không tìm thấy đơn hàng.";
+                ViewBag.Message = "Không tìm thấy đơn hàng hoặc bạn không có quyền truy cập.";
+                return View();
+            }
+
+            // CHỐNG REPLAY: ĐÃ XỬ LÝ RỒI?
+            if (order.Status == "Chờ xử lý" || order.Status == "Thanh toán thất bại")
+            {
+                ViewBag.Message = order.Status == "Chờ xử lý"
+                    ? "Đơn hàng đã được xử lý trước đó."
+                    : "Đơn hàng đã thất bại trước đó.";
+                ViewBag.OrderId = order.OrderID;
                 return View();
             }
 
             // THANH TOÁN THÀNH CÔNG
             if (responseCode == "00")
             {
-                order.Status = "Đã thanh toán";
+                order.Status = "Chờ xử lý";
                 await _context.SaveChangesAsync();
 
                 // XÓA GIỎ HÀNG
-                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (int.TryParse(userIdStr, out int userId))
-                {
-                    var cartItems = await _context.Carts.Where(c => c.UserID == userId).ToListAsync();
-                    _context.Carts.RemoveRange(cartItems);
-                    await _context.SaveChangesAsync();
-                }
+                var cartItems = await _context.Carts.Where(c => c.UserID == currentUserId).ToListAsync();
+                _context.Carts.RemoveRange(cartItems);
+                await _context.SaveChangesAsync();
 
                 // GỬI THÔNG BÁO CHO ADMIN
                 var notification = new Notification
                 {
                     UserID = null,
                     Message = $"[THANH TOÁN THÀNH CÔNG] Đơn hàng #{order.OrderID} - {order.User?.FullName ?? "Khách"}",
-                    Link = $"/Orders/Details/{order.OrderID}", // XÓA /Admin/                    Type = "PaymentSuccess",
+                    Link = $"/Orders/Details/{order.OrderID}",
                     CreatedAt = DateTime.Now,
                     IsRead = false,
                     OrderID = order.OrderID
                 };
-
                 _context.Notifications.Add(notification);
                 await _context.SaveChangesAsync();
 
@@ -160,7 +173,17 @@ namespace DienLanhWeb.Controllers
                 order.Status = "Thanh toán thất bại";
                 await _context.SaveChangesAsync();
 
-                ViewBag.Message = $"Thanh toán thất bại. Mã lỗi: {responseCode}";
+                // TỰ ĐỘNG HỦY SAU 15 PHÚT
+                if (order.OrderDate < DateTime.Now.AddMinutes(-15))
+                {
+                    order.Status = "Đã hủy (hết hạn)";
+                    await _context.SaveChangesAsync();
+                    ViewBag.Message = "Đơn hàng đã hết hạn và bị hủy.";
+                }
+                else
+                {
+                    ViewBag.Message = $"Thanh toán thất bại. Mã lỗi: {responseCode}";
+                }
             }
 
             return View();

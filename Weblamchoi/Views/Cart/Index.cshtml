@@ -582,8 +582,7 @@
                     text.innerHTML = '<img src="https://momo.vn/images/logo-momo.png" width="18" class="me-1" style="vertical-align:text-bottom"> Thanh toán MoMo';
                     btn.className = 'btn btn-danger w-100';
                 } else {
-                    form.action = '/Payment/CreateVNPAY';
-                    text.textContent = 'Thanh toán VNPAY';
+                    form.action = '/Cart/CheckoutOnline'; // DÙNG CheckoutOnline                    text.textContent = 'Thanh toán VNPAY';
                     btn.className = 'btn btn-success w-100';
                 }
             });
