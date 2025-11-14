@@ -44,6 +44,9 @@ namespace weblamchoi.Models
               .WithMany(p => p.UsedAsBonusBy)
               .HasForeignKey(p => p.BonusProductID)
               .OnDelete(DeleteBehavior.SetNull); // Khi xóa sản phẩm quà thì không xóa sản phẩm chính
+            modelBuilder.Entity<MomoResponseEntity>().ToTable("MomoResponses");
+            modelBuilder.Entity<MomoTransaction>().ToTable("MomoTransactions");
+
 
 
 

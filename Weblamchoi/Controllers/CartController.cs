@@ -591,7 +591,6 @@ namespace weblamchoi.Controllers
                     Status = "Pending"
                 });
 
-                _context.Carts.RemoveRange(cartItems);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
