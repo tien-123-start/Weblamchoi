@@ -41,5 +41,7 @@ namespace weblamchoi.Models
         public DateTime? ExpiryDate { get; set; }
         public int CurrentUses { get; internal set; }
         public int MaxUses { get; internal set; }
+        public decimal Value { get; internal set; }
+        public string Type { get; internal set; }
     }
 }

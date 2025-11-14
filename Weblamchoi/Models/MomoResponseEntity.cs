@@ -32,5 +32,6 @@ namespace weblamchoi.Models
 
         // Navigation
         public virtual Order? Order { get; set; }
+        public string ExtraData { get; internal set; }
     }
 }

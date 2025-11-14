@@ -14,6 +14,7 @@
         public ICollection<OrderDetail> OrderDetails { get; set; }
         public Shipping? Shipping { get; set; }
         public Payment? Payment { get; set; }
+        public int PointsUsed { get; internal set; }
     }
 
 }

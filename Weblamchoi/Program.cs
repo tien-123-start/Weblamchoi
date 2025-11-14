@@ -10,30 +10,44 @@ using Weblamchoi.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services
+// ==================== 1. SERVICES ====================
 builder.Services.AddControllersWithViews();
+// Trong phần services
+builder.Services.AddSignalR();
+// ==================== 2. SESSION ====================
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+    options.Cookie.SameSite = SameSiteMode.None;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+});
 
-// Authentication
+// ==================== 3. AUTHENTICATION ====================
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
         options.LoginPath = "/Login/Index";
         options.AccessDeniedPath = "/Account/AccessDenied";
-        options.ExpireTimeSpan = TimeSpan.FromHours(1); // Tùy chỉnh thời gian hết hạn cookie
+        options.ExpireTimeSpan = TimeSpan.FromHours(1);
+        options.SlidingExpiration = true;
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.None;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     });
-builder.Services.AddAuthorization();
-builder.Services.AddSignalR();
-builder.Services.AddControllersWithViews();
-// DbContext
+
+// ==================== 4. DATABASE ====================
 builder.Services.AddDbContext<DienLanhDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Scoped services
+// ==================== 5. SCOPED SERVICES ====================
 builder.Services.AddScoped<ProductService>();
 builder.Services.AddScoped<IContactService, ContactService>();
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 
-// HttpClient with Polly retry policy for Grok API
+// ==================== 6. HTTP CLIENTS ====================
 builder.Services.AddHttpClient("xAIClient", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["xAI:BaseUrl"] ?? "https://api.x.ai/v1");
@@ -44,43 +58,45 @@ builder.Services.AddHttpClient("xAIClient", client =>
 .AddPolicyHandler(HttpPolicyExtensions
     .HandleTransientHttpError()
     .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-    .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))));
+    .WaitAndRetryAsync(3, _ => TimeSpan.FromSeconds(2)));
 
-builder.Services.AddHttpClient(); // Giữ lại để sử dụng cho các dịch vụ khác
+builder.Services.AddHttpClient("DefaultClient");
 
-// SignalR
+// ==================== 7. CORS ====================
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowNgrok", policy =>
+    {
+        policy.WithOrigins("https://toshia-compressed-nondexterously.ngrok-free.dev")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
+// ==================== 8. SIGNALR ====================
 builder.Services.AddSignalR(options =>
 {
-    options.MaximumReceiveMessageSize = 102400; // Tăng giới hạn kích thước tin nhắn nếu cần
+    options.MaximumReceiveMessageSize = 102400;
 });
 
-// Session
-builder.Services.AddSession(options =>
-{
-    options.IdleTimeout = TimeSpan.FromMinutes(30);
-    options.Cookie.HttpOnly = true;
-    options.Cookie.IsEssential = true;
-});
+// ==================== 9. AUTHORIZATION ====================
+builder.Services.AddAuthorization();
 
-// Logging
-builder.Services.AddLogging(logging =>
-{
-    logging.AddConsole();
-    logging.AddDebug();
-    logging.SetMinimumLevel(LogLevel.Information);
-});
+// ==================== 10. CONFIG ====================
 builder.Services.Configure<MomoSettings>(builder.Configuration.GetSection("Momo"));
-builder.Services.AddScoped<IPaymentService, PaymentService>();
+
+// ==================== BUILD ====================
 var app = builder.Build();
 
-// Apply migrations
+// ==================== MIGRATIONS ====================
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<DienLanhDbContext>();
-    dbContext.Database.Migrate();
+    var db = scope.ServiceProvider.GetRequiredService<DienLanhDbContext>();
+    db.Database.Migrate();
 }
 
-// Middleware
+// ==================== MIDDLEWARE ====================
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -93,24 +109,27 @@ else
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+// 1. UseRouting() PHẢI ĐỨNG ĐẦU TIÊN TRONG NHÓM NÀY
 app.UseRouting();
+
+// ĐÚNG THỨ TỰ
+app.UseCors("AllowNgrok");
 app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers(); // Hỗ trợ endpoint /AI/GetResponse
 
-// Routes
+// SignalR trước Controller
+app.MapHub<ChatHub>("/chathub");
+app.MapHub<NotificationHub>("/notificationHub");
+app.MapHub<PaymentHub>("/paymentHub");
+
+// Controller + Routes
+app.MapControllers();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
-
 app.MapControllerRoute(
     name: "admin",
     pattern: "Admin/{controller=AdminDashboard}/{action=Index}/{id?}");
 
-
-// SignalR hubs
-app.MapHub<ChatHub>("/chathub");
-app.MapHub<weblamchoi.Hubs.NotificationHub>("/notificationHub");
-app.MapHub<PaymentHub>("/paymentHub"); // Đường dẫn SignalR
 app.Run();

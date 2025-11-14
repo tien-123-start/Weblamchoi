@@ -11,12 +11,10 @@
     var isPercent = TempData["VoucherIsPercent"] != null && (bool)TempData["VoucherIsPercent"];
     decimal discount = TempData["VoucherDiscount"] != null ? Convert.ToDecimal(TempData["VoucherDiscount"]) : 0;
     if (discount > 0) discountAmount = discount;
-
     var mainProducts = Model?.Where(c => c.Product?.BonusProduct != null).ToList() ?? new List<Cart>();
     var bonusProductIds = mainProducts.Select(m => m.Product.BonusProduct.ProductID).ToHashSet();
     var bonusProducts = Model?.Where(c => bonusProductIds.Contains(c.ProductID)).ToList() ?? new List<Cart>();
     var standaloneProducts = Model?.Except(mainProducts).Except(bonusProducts).ToList() ?? new List<Cart>();
-
     Func<decimal?, string> formatCurrency = (price) =>
         price.HasValue ? $"{price.Value:N0} ₫" : "0 ₫";
 }
@@ -31,62 +29,17 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        .product-info-vertical {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .product-image {
-            width: 60px;
-            height: 60px;
-            object-fit: cover;
-            border-radius: 8px;
-        }
-
-        .quantity-controls {
-            display: inline-flex;
-            align-items: center;
-        }
-
-        .quantity-btn {
-            width: 32px;
-            height: 32px;
-            padding: 0;
-        }
-
-        .quantity-display {
-            min-width: 30px;
-            text-align: center;
-            font-weight: 500;
-        }
-
-        .remove-btn {
-            color: #dc3545;
-        }
-
-            .remove-btn:hover {
-                color: #c82333;
-            }
-
-        .summary-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 6px 0;
-        }
-
-        .payment-card {
-            border: 1px solid #dee2e6;
-            border-radius: 12px;
-            padding: 20px;
-            height: 100%;
-        }
-
-        #map {
-            height: 300px;
-            margin-top: 15px;
-            border-radius: 8px;
-        }
+        .product-info-vertical { display: flex; align-items: center; gap: 12px; }
+        .product-image { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; }
+        .quantity-controls { display: inline-flex; align-items: center; }
+        .quantity-btn { width: 32px; height: 32px; padding: 0; }
+        .quantity-display { min-width: 30px; text-align: center; font-weight: 500; }
+        .remove-btn { color: #dc3545; }
+        .remove-btn:hover { color: #c82333; }
+        .summary-row { display: flex; justify-content: space-between; padding: 6px 0; }
+        .payment-card { border: 1px solid #dee2e6; border-radius: 12px; padding: 20px; height: 100%; }
+        #map { height: 300px; margin-top: 15px; border-radius: 8px; }
+        .btn-disabled { opacity: 0.6; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -135,6 +88,7 @@
             }
             else
             {
+                <!-- Bảng sản phẩm -->
                 <div class="card mb-4">
                     <div class="card-body p-0">
                         <table class="table modern-table mb-0">
@@ -278,7 +232,7 @@
 
         <!-- ĐỊA CHỈ GIAO HÀNG -->
         <div class="card mb-4">
-            <div class="card-header">Địa chỉ giao hàng</div>
+            <div class="card-header">Địa chỉ giao hàng <span class="text-danger">*</span></div>
             <div class="card-body">
                 <div class="mb-2">
                     <button type="button" class="btn btn-outline-primary btn-sm" onclick="getCurrentLocation()">Lấy vị trí hiện tại</button>
@@ -288,7 +242,7 @@
                     <input type="text" id="shippingAddress" class="form-control" placeholder="VD: 123 Lê Lợi, Quận 1, TP.HCM" />
                     <button type="button" class="btn btn-outline-secondary" onclick="geocodeAddress()">Tìm tọa độ</button>
                 </div>
-                <button type="button" class="btn btn-success w-100" onclick="calculateShippingFee()">Tính phí vận chuyển</button>
+                <button type="button" id="calcShippingBtn" class="btn btn-success w-100" onclick="calculateShippingFee()">Tính phí vận chuyển</button>
                 <div id="shippingResult" class="mt-3"></div>
                 <input type="hidden" id="shippingLat" />
                 <input type="hidden" id="shippingLng" />
@@ -327,7 +281,6 @@
                         <div class="payment-card online d-flex flex-column">
                             <h5>Thanh toán Online</h5>
                             <p class="text-muted mb-3">Chọn VNPAY hoặc MoMo</p>
-
                             <div class="input-group mb-3">
                                 <label class="input-group-text">Icon</label>
                                 <select id="onlinePaymentMethod" class="form-select">
@@ -335,7 +288,6 @@
                                     <option value="momo">MoMo</option>
                                 </select>
                             </div>
-
                             <form id="onlinePaymentForm" method="post" class="mt-3">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="voucherCode" value="@voucherCode" />
@@ -344,20 +296,18 @@
                                 <input type="hidden" name="shippingLng" id="onlineShippingLng" />
                                 <input type="hidden" name="shippingAddress" id="onlineShippingAddress" />
                                 <input type="hidden" name="shippingFee" id="onlineShippingFee" value="0" />
-
-                                <button type="submit" id="onlineSubmitBtn" class="btn btn-success w-100">
+                                <button type="submit" id="onlineSubmitBtn" class="btn btn-success w-100 btn-disabled" disabled>
                                     <span id="btnText">Thanh toán VNPAY</span>
                                 </button>
                             </form>
                         </div>
                     </div>
-
                     <!-- THANH TOÁN TẠI CỬA HÀNG -->
                     <div class="col-md-6">
                         <div class="payment-card store d-flex flex-column">
                             <h5>Thanh toán tại cửa hàng</h5>
                             <p class="text-muted mb-3">Nhận hàng & thanh toán trực tiếp</p>
-                            <form method="post" asp-action="Checkout" class="mt-auto">
+                            <form id="cod-form-id" method="post" asp-action="Checkout" class="mt-auto">
                                 <input type="hidden" name="paymentMethod" value="Tại cửa hàng" />
                                 <input type="hidden" name="voucherCode" value="@voucherCode" />
                                 <input type="hidden" name="usePoints" id="codUsePoints" value="false" />
@@ -365,7 +315,7 @@
                                 <input type="hidden" name="shippingLng" id="codShippingLng" />
                                 <input type="hidden" name="shippingAddress" id="codShippingAddress" />
                                 <input type="hidden" name="shippingFee" id="codShippingFee" value="0" />
-                                <button type="submit" class="btn btn-primary w-100">Xác nhận đơn</button>
+                                <button type="submit" id="codSubmitBtn" class="btn btn-primary w-100 btn-disabled" disabled>Xác nhận đơn</button>
                             </form>
                         </div>
                     </div>
@@ -383,11 +333,10 @@
         const vi = new Intl.NumberFormat('vi-VN');
         const STORE_LAT = 10.7769, STORE_LNG = 106.7009;
         let shippingFee = 0, map, userMarker, storeMarker, routeControl, mapInitialized = false;
-
-        // === BIẾN TỪ SERVER ===
         const totalAmount = @totalAmount;
         const discountAmount = @discountAmount;
         const userPoints = @userPoints;
+        let isShippingCalculated = false;
 
         // === KHỞI TẠO BẢN ĐỒ ===
         function initMap() {
@@ -400,21 +349,43 @@
             storeMarker = L.marker([STORE_LAT, STORE_LNG]).addTo(map).bindPopup('Cửa hàng').openPopup();
         }
 
+        // === LẤY VỊ TRÍ HIỆN TẠI ===
+        function getCurrentLocation() {
+            if (!navigator.geolocation) {
+                alert("Trình duyệt không hỗ trợ định vị.");
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                pos => setShippingCoords(pos.coords.latitude, pos.coords.longitude, "Vị trí hiện tại"),
+                () => alert("Không thể lấy vị trí. Vui lòng nhập thủ công.")
+            );
+        }
+
+        // === GEOCODE ĐỊA CHỈ ===
+        function geocodeAddress() {
+            const address = document.getElementById('shippingAddress').value.trim();
+            if (!address) return alert("Vui lòng nhập địa chỉ!");
+            const btn = document.querySelector('button[onclick="geocodeAddress()"]');
+            const orig = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = 'Đang tìm...';
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=vn&limit=1`)
+                .then(r => r.json())
+                .then(d => d?.length ? setShippingCoords(d[0].lat, d[0].lon, address) : alert("Không tìm thấy địa chỉ."))
+                .catch(() => alert("Lỗi kết nối."))
+                .finally(() => { btn.disabled = false; btn.innerHTML = orig; });
+        }
+
         // === CẬP NHẬT ĐỊA CHỈ & BẢN ĐỒ ===
         function setShippingCoords(lat, lng, address) {
-            ['shippingLat', 'shippingLng'].forEach(id => document.getElementById(id).value = lat || lng ? lat : '');
+            ['shippingLat', 'shippingLng', 'shippingAddress'].forEach(id => document.getElementById(id).value = id === 'shippingAddress' ? address : (id === 'shippingLat' ? lat : lng));
             ['online', 'cod'].forEach(p => {
                 const el = id => document.getElementById(`${p}${id}`);
-                el('ShippingLat').value = lat;
-                el('ShippingLng').value = lng;
-                el('ShippingAddress').value = address;
+                el('ShippingLat').value = lat; el('ShippingLng').value = lng; el('ShippingAddress').value = address;
             });
-
             const pos = [lat, lng];
             if (!userMarker) userMarker = L.marker(pos).addTo(map).bindPopup('Bạn đang ở đây');
             else userMarker.setLatLng(pos);
             map.setView(pos, 14);
-
             if (routeControl) map.removeControl(routeControl);
             routeControl = L.Routing.control({
                 waypoints: [L.latLng(STORE_LAT, STORE_LNG), L.latLng(lat, lng)],
@@ -422,34 +393,32 @@
                 lineOptions: { styles: [{ color: '#0d6efd', weight: 5 }] },
                 router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1' })
             }).addTo(map);
-
+            isShippingCalculated = false;
+            document.getElementById('shippingRow').style.display = 'none';
+            document.getElementById('shippingResult').innerHTML = '';
             saveShippingData(lat, lng, address);
+            enablePaymentButtons(false);
         }
 
-        // === LƯU / TẢI ĐỊA CHỈ ===
+        // === LƯU / TẢI ===
         function saveShippingData(lat, lng, address, fee = null) {
             const data = { lat, lng, address };
             if (fee !== null) data.shippingFee = fee;
             localStorage.setItem('cartShipping', JSON.stringify(data));
         }
-
         function loadSavedShipping() {
-            const saved = localStorage.getItem('cartShipping');
-            if (!saved) return;
+            const s = localStorage.getItem('cartShipping');
+            if (!s) return;
             try {
-                const d = JSON.parse(saved);
+                const d = JSON.parse(s);
                 if (d.lat && d.lng && d.address) {
-                    document.getElementById('shippingAddress').value = d.address;
-                    ['shippingLat', 'shippingLng'].forEach((id, i) => document.getElementById(id).value = [d.lat, d.lng][i]);
-                    ['online', 'cod'].forEach(p => {
-                        const el = id => document.getElementById(`${p}${id}`);
-                        el('ShippingLat').value = d.lat; el('ShippingLng').value = d.lng; el('ShippingAddress').value = d.address;
-                    });
                     setShippingCoords(d.lat, d.lng, d.address);
-                    if (d.shippingFee) {
+                    if (d.shippingFee !== undefined) {
                         shippingFee = d.shippingFee;
+                        isShippingCalculated = true;
                         showShippingResult(d.address, 'Đã lưu', d.shippingFee);
                         updateFinalTotal();
+                        enablePaymentButtons(true);
                     }
                 }
             } catch { localStorage.removeItem('cartShipping'); }
@@ -467,82 +436,18 @@
                 </div>`;
         }
 
-        // === CẬP NHẬT TỔNG TIỀN ===
-        function updateFinalTotal() {
-            const subtotal = totalAmount - discountAmount + shippingFee;
-            const pointValue = document.getElementById('usePointsCheckbox').checked
-                ? Math.min(userPoints * 1000, subtotal) : 0;
-            const final = Math.max(subtotal - pointValue, 0);
-
-            document.getElementById('finalTotal').textContent = vi.format(final) + ' ₫';
-            document.getElementById('shippingFee').textContent = vi.format(shippingFee) + ' ₫';
-
-            const use = document.getElementById('usePointsCheckbox').checked;
-            ['onlineUsePoints', 'codUsePoints'].forEach(id => document.getElementById(id).value = use);
-
-            const lat = document.getElementById('shippingLat').value;
-            const lng = document.getElementById('shippingLng').value;
-            const addr = document.getElementById('shippingAddress').value;
-            ['online', 'cod'].forEach(p => {
-                const el = id => document.getElementById(`${p}${id}`);
-                el('ShippingLat').value = lat; el('ShippingLng').value = lng;
-                el('ShippingAddress').value = addr; el('ShippingFee').value = shippingFee;
-            });
-        }
-
-        // === DỊCH VỊ TRÍ ===
-        async function getCurrentLocation() {
-            if (!navigator.geolocation) return alert('Trình duyệt không hỗ trợ định vị.');
-            navigator.geolocation.getCurrentPosition(async pos => {
-                await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-                calculateShippingFee();
-            }, err => alert(err.code === 1
-                ? 'Quyền vị trí bị chặn. Click biểu tượng khóa → Site settings → Location → Allow → Reload.'
-                : 'Lỗi định vị: ' + err.message));
-        }
-
-        async function geocodeAddress() {
-            const addr = document.getElementById('shippingAddress').value.trim();
-            if (!addr) return alert('Vui lòng nhập địa chỉ!');
-            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&countrycodes=vn&limit=1`;
-            try {
-                const r = await fetch(url, { headers: { 'User-Agent': 'WeblamchoiApp/1.0' } });
-                const d = await r.json();
-                if (d?.length) {
-                    const { lat, lon, display_name } = d[0];
-                    document.getElementById('shippingAddress').value = display_name;
-                    setShippingCoords(lat, lon, display_name);
-                    calculateShippingFee();
-                } else alert('Không tìm thấy địa chỉ.');
-            } catch { alert('Lỗi kết nối.'); }
-        }
-
-        async function reverseGeocode(lat, lng) {
-            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`;
-            try {
-                const r = await fetch(url, { headers: { 'User-Agent': 'WeblamchoiApp/1.0' } });
-                const d = await r.json();
-                if (d?.display_name) {
-                    document.getElementById('shippingAddress').value = d.display_name;
-                    setShippingCoords(lat, lng, d.display_name);
-                }
-            } catch {}
-        }
-
         // === TÍNH PHÍ SHIP ===
         async function calculateShippingFee() {
-            const btn = document.querySelector('button[onclick="calculateShippingFee()"]');
-            const originalText = btn.innerHTML;
+            const btn = document.getElementById('calcShippingBtn');
+            const orig = btn.innerHTML;
             btn.disabled = true; btn.innerHTML = 'Đang tính...';
-
             const lat = document.getElementById('shippingLat').value;
             const lng = document.getElementById('shippingLng').value;
-            const addr = document.getElementById('shippingAddress').value;
+            const addr = document.getElementById('shippingAddress').value.trim();
             if (!lat || !lng || !addr) {
-                btn.disabled = false; btn.innerHTML = originalText;
-                return alert('Vui lòng chọn địa chỉ trước!');
+                btn.disabled = false; btn.innerHTML = orig;
+                return alert('Vui lòng nhập và xác định tọa độ địa chỉ trước!');
             }
-
             try {
                 const res = await fetch('/Cart/CalculateShipping', {
                     method: 'POST',
@@ -552,69 +457,122 @@
                 const data = await res.json();
                 if (data.success) {
                     shippingFee = data.shippingFee;
-                    showShippingResult(addr, data.distance, data.shippingFee);
+                    isShippingCalculated = true;
+                    showShippingResult(addr, data.distance.toFixed(1), data.shippingFee);
                     updateFinalTotal();
                     saveShippingData(lat, lng, addr, shippingFee);
+                    enablePaymentButtons(true);
                 } else {
+                    isShippingCalculated = false;
                     document.getElementById('shippingResult').innerHTML = `<div class="alert alert-danger">Lỗi: ${data.message}</div>`;
+                    enablePaymentButtons(false);
                 }
             } catch {
+                isShippingCalculated = false;
                 document.getElementById('shippingResult').innerHTML = `<div class="alert alert-danger">Lỗi kết nối server.</div>`;
+                enablePaymentButtons(false);
             } finally {
-                btn.disabled = false; btn.innerHTML = originalText;
+                btn.disabled = false; btn.innerHTML = orig;
             }
+        }
+
+        // === CẬP NHẬT TỔNG TIỀN ===
+        function updateFinalTotal() {
+            const subtotal = totalAmount - discountAmount + shippingFee;
+            const pointValue = document.getElementById('usePointsCheckbox').checked ? Math.min(userPoints * 1000, subtotal) : 0;
+            const final = Math.max(subtotal - pointValue, 0);
+            document.getElementById('finalTotal').textContent = vi.format(final) + ' ₫';
+            document.getElementById('shippingFee').textContent = vi.format(shippingFee) + ' ₫';
+            const use = document.getElementById('usePointsCheckbox').checked;
+            ['onlineUsePoints', 'codUsePoints'].forEach(id => document.getElementById(id).value = use);
+            ['online', 'cod'].forEach(p => document.getElementById(`${p}ShippingFee`).value = shippingFee);
+        }
+
+        // === KIỂM TRA TRƯỚC SUBMIT ===
+        function validateBeforeSubmit() {
+            const lat = document.getElementById('shippingLat').value;
+            const lng = document.getElementById('shippingLng').value;
+            const addr = document.getElementById('shippingAddress').value.trim();
+            if (!lat || !lng || !addr) {
+                alert("Vui lòng nhập và xác định địa chỉ giao hàng!");
+                return false;
+            }
+            if (!isShippingCalculated) {
+                alert("Vui lòng nhấn 'Tính phí vận chuyển' trước khi thanh toán!");
+                return false;
+            }
+            return true;
+        }
+
+        // === KÍCH HOẠT NÚT THANH TOÁN ===
+        function enablePaymentButtons(enabled) {
+            ['onlineSubmitBtn', 'codSubmitBtn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.disabled = !enabled;
+                    btn.classList.toggle('btn-disabled', !enabled);
+                }
+            });
         }
 
         // === KHỞI ĐỘNG ===
         document.addEventListener('DOMContentLoaded', () => {
-            initMap(); loadSavedShipping(); updateFinalTotal();
+            initMap();
+            loadSavedShipping();
 
-            // ĐỔI NÚT THANH TOÁN
+            // ĐỔI PHƯƠNG THỨC ONLINE
             const methodSelect = document.getElementById('onlinePaymentMethod');
-            const form = document.getElementById('onlinePaymentForm');
-            const btn = document.getElementById('onlineSubmitBtn');
-            const text = document.getElementById('btnText');
-
-            methodSelect.addEventListener('change', () => {
+            const onlineForm = document.getElementById('onlinePaymentForm');
+            const btnText = document.getElementById('btnText');
+            methodSelect?.addEventListener('change', () => {
                 const m = methodSelect.value;
-                if (m === 'momo') {
-                    form.action = '/Cart/CheckoutMomo';
-                    text.innerHTML = '<img src="https://momo.vn/images/logo-momo.png" width="18" class="me-1" style="vertical-align:text-bottom"> Thanh toán MoMo';
-                    btn.className = 'btn btn-danger w-100';
-                } else {
-                    form.action = '/Cart/CheckoutOnline'; // DÙNG CheckoutOnline                    text.textContent = 'Thanh toán VNPAY';
-                    btn.className = 'btn btn-success w-100';
-                }
+                onlineForm.action = m === 'momo' ? '@Url.Action("CheckoutMomo", "Cart")' : '@Url.Action("CheckoutOnline", "Cart")';
+                btnText.innerHTML = m === 'momo'
+                    ? '<img src="https://momo.vn/images/logo-momo.png" width="18" class="me-1"> Thanh toán MoMo'
+                    : 'Thanh toán VNPAY';
+                document.getElementById('onlineSubmitBtn').className = m === 'momo' ? 'btn btn-danger w-100' : 'btn btn-success w-100';
             });
-            methodSelect.dispatchEvent(new Event('change'));
+            methodSelect?.dispatchEvent(new Event('change'));
 
-            // DÙNG ĐIỂM → THÔNG BÁO
-            document.getElementById('usePointsCheckbox').addEventListener('change', function () {
-                if (this.checked && userPoints > 0) {
-                    const pointValue = Math.min(userPoints * 1000, totalAmount - discountAmount + shippingFee);
-                    if (pointValue > 0) {
-                        alert(`Đã sử dụng ${userPoints} điểm, giảm ${vi.format(pointValue)}₫`);
-                    }
+            // SỬ DỤNG ĐIỂM
+            document.getElementById('usePointsCheckbox')?.addEventListener('change', () => {
+                if (document.getElementById('usePointsCheckbox').checked && userPoints > 0) {
+                    const val = Math.min(userPoints * 1000, totalAmount - discountAmount + shippingFee);
+                    if (val > 0) alert(`Đã sử dụng ${userPoints} điểm, giảm ${vi.format(val)}₫`);
                 }
                 updateFinalTotal();
             });
+
+            // SUBMIT FORM
+            ['onlinePaymentForm', 'cod-form-id'].forEach(id => {
+                const form = document.getElementById(id);
+                if (form) {
+                    form.addEventListener('submit', function (e) {
+                        if (!validateBeforeSubmit()) {
+                            e.preventDefault();
+                            return false;
+                        }
+                        const btn = this.querySelector('button[type="submit"]');
+                        if (btn) {
+                            btn.disabled = true;
+                            btn.innerHTML = 'Đang xử lý...';
+                        }
+                    });
+                }
+            });
         });
 
-        // === SIGNALR REALTIME ===
+        // === SIGNALR ===
         const connection = new signalR.HubConnectionBuilder()
             .withUrl("/paymentHub")
             .withAutomaticReconnect()
             .build();
-
         connection.on("PaymentSuccess", (orderId, message) => {
             alert(message);
-            localStorage.removeItem('cartShipping'); // XÓA ĐỂ TRÁNH DÍNH ĐƠN CŨ
-            window.location.href = "/Cart"; // TỰ ĐỘNG VỀ GIỎ HÀNG
+            localStorage.removeItem('cartShipping');
+            window.location.href = "/Cart";
         });
-
         connection.start().catch(err => console.error("SignalR Error:", err));
     </script>
 </body>
-
-
 </html>

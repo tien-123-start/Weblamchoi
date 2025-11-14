@@ -11,7 +11,7 @@ namespace weblamchoi.Models
         public int TransactionId { get; set; }
         public int? OrderID { get; set; }
         public string? RequestId { get; set; }
-        public string MomoOrderId { get; set; } = "";
+        public string? MomoOrderId { get; set; }
         public string? TransId { get; set; }
         public decimal? Amount { get; set; }
         public string? PayType { get; set; }
@@ -24,5 +24,6 @@ namespace weblamchoi.Models
         public DateTime ReceivedAt { get; set; } = DateTime.Now;
 
         public Order? Order { get; set; }
+        public string? ExtraData { get; internal set; }
     }
 }

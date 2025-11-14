@@ -25,34 +25,63 @@ namespace weblamchoi.Models
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<UserVoucher> UserVouchers { get; set; }
         public DbSet<MomoResponseEntity> MomoResponses { get; set; }
-        public DbSet<MomoTransaction> MomoTransactions { get; set; }    
+        public DbSet<MomoTransaction> MomoTransactions { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-                
-            modelBuilder.Entity<Product>()
+
+            // === TẤT CẢ CÁC TRƯỜNG DECIMAL ===
+            modelBuilder.Entity<BonusProduct>()
                 .Property(p => p.Price)
                 .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Cart>()
+                .Property(p => p.Price)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<MomoTransaction>()
+                .Property(p => p.Amount)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Order>()
+                .Property(p => p.TotalAmount)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<OrderDetail>()
+                .Property(p => p.Price)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<OrderDetail>()
+                .Property(p => p.UnitPrice)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Payment>()
+                .Property(p => p.Amount)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Payment>()
+                .Property(p => p.PaidAmount)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Product>()
+                .Property(p => p.DiscountPercentage)
+                .HasColumnType("decimal(5,2)");
+                modelBuilder.Entity<Product>()
+        .Property(p => p.Price)
+        .HasColumnType("decimal(18,2)");
 
             modelBuilder.Entity<Product>()
                 .Property(p => p.OriginalPrice)
                 .HasColumnType("decimal(18,2)");
-            modelBuilder.Entity<RevenueReport>().ToTable("RevenueReport");
-            modelBuilder.Entity<Admin>().ToTable("Admins", t => t.ExcludeFromMigrations());
-            modelBuilder.Entity<Product>()
-              .HasOne(p => p.BonusProduct)
-              .WithMany(p => p.UsedAsBonusBy)
-              .HasForeignKey(p => p.BonusProductID)
-              .OnDelete(DeleteBehavior.SetNull); // Khi xóa sản phẩm quà thì không xóa sản phẩm chính
-            modelBuilder.Entity<MomoResponseEntity>().ToTable("MomoResponses");
-            modelBuilder.Entity<MomoTransaction>().ToTable("MomoTransactions");
 
+            modelBuilder.Entity<RevenueReport>()
+                .Property(p => p.TotalRevenue)
+                .HasColumnType("decimal(18,2)");
 
-
-
-
-
-
+            modelBuilder.Entity<Shipping>()
+                .Property(p => p.ShippingFee)
+                .HasColumnType("decimal(18,2)");
         }
     }
 }

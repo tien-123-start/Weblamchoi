@@ -74,27 +74,24 @@ namespace weblamchoi.Services
         }
         public async Task<string?> CreateMomoQrPaymentAsync(Order order, string returnUrl, string notifyUrl)
         {
-            string endpoint = "https://test-payment.momo.vn/v2/gateway/api/create"; // endpoint test
-            string partnerCode = "MOMOXXXX2025";  // 👉 thay bằng mã của bạn
-            string accessKey = "xxxxxx";          // 👉 lấy từ Momo Dashboard
-            string secretKey = "xxxxxx";          // 👉 lấy từ Momo Dashboard
+            if (order.TotalAmount <= 0) return null;
+
+            string endpoint = "https://test-payment.momo.vn/v2/gateway/api/create";
+            string partnerCode = "MOMOBKUN20180529";
+            string accessKey = "klm05TvNBzhg7h7j";
+            string secretKey = "at67qH6mk8w5Y1nAyMoYKMWACiEi2bsa";
 
             string orderId = order.OrderID.ToString();
             string requestId = Guid.NewGuid().ToString();
-            string amount = (order.TotalAmount ?? 0).ToString("0");
+            string amount = Math.Round(order.TotalAmount ?? 0).ToString("0");
             string orderInfo = $"Thanh toán đơn hàng #{orderId}";
 
-            var rawHash = $"accessKey={accessKey}&amount={amount}&extraData=&ipnUrl={notifyUrl}" +
-                          $"&orderId={orderId}&orderInfo={orderInfo}&partnerCode={partnerCode}" +
-                          $"&redirectUrl={returnUrl}&requestId={requestId}&requestType=captureWallet";
+            string rawHash = $"accessKey={accessKey}&amount={amount}&extraData=&ipnUrl={notifyUrl}&orderId={orderId}&orderInfo={orderInfo}&partnerCode={partnerCode}&redirectUrl={returnUrl}&requestId={requestId}&requestType=captureWallet";
 
-            // 🔒 Tạo chữ ký
             using var hmac = new System.Security.Cryptography.HMACSHA256(System.Text.Encoding.UTF8.GetBytes(secretKey));
             var signatureBytes = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(rawHash));
             string signature = BitConverter.ToString(signatureBytes).Replace("-", "").ToLower();
 
-            // 📦 Gửi request đến MoMo
-            var httpClient = new HttpClient();
             var requestBody = new
             {
                 partnerCode,
@@ -109,17 +106,16 @@ namespace weblamchoi.Services
                 requestType = "captureWallet",
                 extraData = "",
                 signature,
-                payType = "qr" // 👈 Đây là điểm khác biệt: hiển thị mã QR
+                payType = "qr"
             };
 
-            var response = await httpClient.PostAsJsonAsync(endpoint, requestBody);
+            var response = await new HttpClient().PostAsJsonAsync(endpoint, requestBody);
             if (!response.IsSuccessStatusCode) return null;
 
             var json = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
-            if (json != null && json.ContainsKey("payUrl"))
+            if (json != null && json.TryGetValue("payUrl", out var payUrl))
             {
-                // 👉 payUrl là link chứa mã QR (MoMo trả về)
-                return json["payUrl"];
+                return payUrl;
             }
 
             return null;

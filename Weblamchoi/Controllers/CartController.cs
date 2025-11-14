@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using weblamchoi.Hubs;
 using weblamchoi.Models;
@@ -390,6 +391,34 @@ namespace weblamchoi.Controllers
             }
         }
 
+        private async Task<decimal> CalculateDiscount(string voucherCode, decimal totalAmount)
+        {
+            if (string.IsNullOrEmpty(voucherCode))
+                return 0m;
+
+            // Giả sử bạn có DbContext tên _context
+            var voucher = await _context.Vouchers
+                .FirstOrDefaultAsync(v => v.Code == voucherCode && v.IsActive);
+
+            if (voucher == null)
+                return 0m;
+
+            decimal discount = 0;
+
+            if (voucher.Type == "Percentage") // giảm theo %
+            {
+                discount = totalAmount * voucher.Value / 100m;
+            }
+            else if (voucher.Type == "Fixed") // giảm theo tiền cố định
+            {
+                discount = voucher.Value;
+            }
+
+            // Giới hạn discount không vượt quá totalAmount
+            return Math.Min(discount, totalAmount);
+        }
+
+
         [HttpPost]
         public async Task<IActionResult> CheckoutOnline(
             string voucherCode = null,
@@ -481,7 +510,7 @@ namespace weblamchoi.Controllers
                 //_context.Carts.RemoveRange(cartItems);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
-                await SendAdminNotification(order, user, "Chờ thanh toán VNPAY");
+                await SendAdminNotification(order, user, "Chờ xử lý VNPAY");
 
                 return RedirectToAction("CreatePayment", "Payment", new
                 {
@@ -502,22 +531,28 @@ namespace weblamchoi.Controllers
 
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CheckoutMomo(
-      string voucherCode = null,
+      string? voucherCode,
       bool usePoints = false,
       decimal? shippingLat = null,
       decimal? shippingLng = null,
-      string shippingAddress = null,
+      string? shippingAddress = null,
       decimal shippingFee = 0)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null || !int.TryParse(userId, out int userIdInt))
+            // === 1. XÁC THỰC USER ===
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
                 return RedirectToAction("Index", "Login");
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserID == userIdInt);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserID == userId);
+            if (user == null)
+                return RedirectToAction("Index", "Login");
+
+            // === 2. KIỂM TRA GIỎ HÀNG ===
             var cartItems = await _context.Carts
                 .Include(c => c.Product)
-                .Where(c => c.UserID == userIdInt)
+                .Where(c => c.UserID == userId)
                 .ToListAsync();
 
             if (!cartItems.Any())
@@ -526,40 +561,47 @@ namespace weblamchoi.Controllers
                 return RedirectToAction("Index");
             }
 
-            if (!shippingLat.HasValue || !shippingLng.HasValue || string.IsNullOrEmpty(shippingAddress))
+            // === 3. KIỂM TRA ĐỊA CHỈ ===
+            if (!shippingLat.HasValue || !shippingLng.HasValue || string.IsNullOrWhiteSpace(shippingAddress))
             {
                 TempData["ErrorMessage"] = "Vui lòng chọn địa chỉ giao hàng.";
                 return RedirectToAction("Index");
             }
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            // === 4. TRANSACTION ===
+            await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 // TÍNH TỔNG TIỀN
                 decimal totalAmount = cartItems.Sum(i => (i.Product?.Price ?? 0m) * i.Quantity);
-                decimal discount = await CalculateDiscount(voucherCode, totalAmount);
+                decimal discount = await CalculateDiscount(voucherCode, totalAmount, userId);
                 decimal amountAfterDiscount = totalAmount - discount;
                 decimal subtotal = amountAfterDiscount + shippingFee;
 
+                // DÙNG ĐIỂM
+                int pointsUsed = 0;
                 if (usePoints && user.Points > 0)
                 {
                     decimal pointValue = Math.Min(user.Points * 1000m, subtotal);
                     subtotal -= pointValue;
-                    user.Points -= (int)(pointValue / 1000m);
+                    pointsUsed = (int)(pointValue / 1000m);
+                    user.Points -= pointsUsed;
                     _context.Users.Update(user);
                 }
 
                 // TẠO ĐƠN HÀNG
                 var order = new Order
                 {
-                    UserID = userIdInt,
+                    UserID = userId,
                     OrderDate = DateTime.Now,
-                    Status = "Chờ xử lý",
+                    Status = "Chờ thanh toán",
                     TotalAmount = subtotal,
-                    VoucherCode = voucherCode
+                    VoucherCode = voucherCode,
+                    PointsUsed = pointsUsed
                 };
+
                 _context.Orders.Add(order);
-                await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync(); // LẤY OrderID
 
                 // CHI TIẾT ĐƠN HÀNG
                 foreach (var item in cartItems)
@@ -569,49 +611,71 @@ namespace weblamchoi.Controllers
                         OrderID = order.OrderID,
                         ProductID = item.ProductID,
                         Quantity = item.Quantity,
-                        UnitPrice = item.Product?.Price ?? 0m
+                        UnitPrice = item.Product?.Price ?? 0m,
+                        Price = (item.Product?.Price ?? 0m) * item.Quantity
                     });
                 }
 
+                // GIAO HÀNG
                 _context.Shippings.Add(new Shipping
                 {
                     OrderID = order.OrderID,
                     ShippingAddress = shippingAddress,
                     ShippingMethod = "Giao hàng tiêu chuẩn",
                     ShippingFee = shippingFee,
-                    DestinationLat = shippingLat.ToString(),
-                    DestinationLng = shippingLng.ToString()
+                    DestinationLat = shippingLat.Value.ToString("F6"),
+                    DestinationLng = shippingLng.Value.ToString("F6")
                 });
 
+                // THANH TOÁN
                 _context.Payments.Add(new Payment
                 {
                     OrderID = order.OrderID,
                     PaymentMethod = "MoMo",
-                    PaidAmount = subtotal,
+                    Amount = subtotal,
+                    PaidAmount = 0m,
                     Status = "Pending"
                 });
+
+                // GỌI TRANSACTION CHO MOMO
+                var momoTransaction = new MomoTransaction
+                {
+                    OrderID = order.OrderID,
+                    Amount = subtotal,
+                    OrderInfo = $"Thanh toán đơn hàng #{order.OrderID}",
+                    OrderType = "momo_wallet",
+                    PayType = "web",
+                    ResultCode = "0",
+                    Message = "Chờ thanh toán"
+                };
+                _context.MomoTransactions.Add(momoTransaction);
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                await SendAdminNotification(order, user, "Chờ thanh toán MoMo");
+                // XÓA GIỎ HÀNG
+                _context.Carts.RemoveRange(cartItems);
+                await _context.SaveChangesAsync();
 
-                // NHẢY NGAY TRANG QR – GỬI amount BẮT BUỘC
+                // GỬI THÔNG BÁO ADMIN
+                await SendAdminNotification(order, user, "Đơn hàng mới - Chờ xử lý MoMo");
+
+                // === CHUYỂN HƯỚNG TỚI MOMO ===
                 return RedirectToAction("Create", "Momo", new
                 {
                     orderId = order.OrderID,
-                    amount = (long)Math.Round(subtotal),
-                    orderInfo = $"Thanh toán đơn hàng #{order.OrderID}"
+                    amount = (long)(subtotal * 1), // VNĐ → đồng (MoMo dùng đồng)
+                    orderInfo = $"Thanh toán đơn hàng #{order.OrderID}",
+                    extraData = Convert.ToBase64String(Encoding.UTF8.GetBytes(order.OrderID.ToString()))
                 });
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                TempData["ErrorMessage"] = "Lỗi: " + ex.Message;
+                TempData["ErrorMessage"] = "Lỗi xử lý đơn hàng: " + ex.Message;
                 return RedirectToAction("Index");
             }
         }
-
         // === TÍNH PHÍ SHIP (API) ===
         [HttpPost]
         public async Task<JsonResult> CalculateShipping([FromBody] ShippingDto dto)
@@ -655,7 +719,7 @@ namespace weblamchoi.Controllers
         }
 
         // === HÀM HỖ TRỢ ===
-        private async Task<decimal> CalculateDiscount(string code, decimal total)
+        private async Task<decimal> CalculateDiscount(string code, decimal total, int userId)
         {
             if (string.IsNullOrEmpty(code)) return 0;
             var voucher = await _context.Vouchers
